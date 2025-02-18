@@ -1,0 +1,277 @@
+{
+	"tabla": "pos_egreso_medio_pago",
+	"tablaPadre": "pos_egreso",
+	"_idAplicacion": "Especifica el id de la aplicacion que lo gestiona",
+	"sufijo": "EMP",
+	"longitud": 12,
+	"altura": "20rem",
+	"alternaListadoFormulario": false,
+	"seccionesBody": {
+		"formulario": {
+			"construye": true,
+			"botones": []
+		},
+		"listado": {
+			"construye": true,
+			"botones": []
+		},
+		"filtro": false
+	},
+	"campos": [
+		{
+			"nombre": "idEMP",
+			"campoBD": "id",
+			"tipo": "int",
+			"tipoGenerico": "int",
+			"titulo": "Id",
+			"longitud": 2,
+			"posicion": "c11",
+			"visible": false,
+			"requerido": true,
+			"validaSimbolos": true,
+			"convierteMayuscula": false,
+			"opcionesListado": {
+				"visible": false,
+				"posicion": 0,
+				"titulo": "Id",
+				"longitud": 1,
+				"alineacion": "center",
+				"ordenable": true,
+				"busqueda": true,
+				"formato": "text"
+			},
+			"fuente": {}
+		},
+		{
+			"nombre": "idEgresoEMP",
+			"campoBD": "id_egreso",
+			"tipo": "int",
+			"tipoGenerico": "int",
+			"titulo": "Id",
+			"longitud": 2,
+			"posicion": "c11",
+			"visible": false,
+			"requerido": true,
+			"validaSimbolos": true,
+			"convierteMayuscula": false,
+			"opcionesListado": {
+				"visible": false,
+				"posicion": 0,
+				"titulo": "Id",
+				"longitud": 1,
+				"alineacion": "center",
+				"ordenable": true,
+				"busqueda": true,
+				"formato": "text"
+			},
+			"fuente": {}
+		},
+		{
+			"nombre": "itemEMP",
+			"campoBD": "item",
+			"tipo": "int",
+			"tipoGenerico": "int",
+			"titulo": "Item",
+			"longitud": 2,
+			"posicion": "c11",
+			"visible": false,
+			"requerido": true,
+			"validaSimbolos": true,
+			"convierteMayuscula": false,
+			"opcionesListado": {
+				"visible": false,
+				"posicion": 1,
+				"titulo": "Item",
+				"longitud": 1,
+				"alineacion": "center",
+				"ordenable": true,
+				"busqueda": true,
+				"formato": "text"
+			},
+			"fuente": {}
+		},
+		{
+			"nombre": "idMedioPagoEMP",
+			"campoBD": "id_medio_pago",
+			"tipo": "int",
+			"tipoGenerico": "int",
+			"titulo": "Medio Pago",
+			"evento": "onchange",
+			"accion": "listarFranquiciaTarjeta(this.value, 'EMP')",
+			"longitud": 4,
+			"posicion": "c11",
+			"visible": true,
+			"requerido": true,
+			"validaSimbolos": true,
+			"convierteMayuscula": false,
+			"operadorArray": true,
+			"opcionesListado": {
+				"visible": true,
+				"posicion": 1,
+				"titulo": "Medio Pago",
+				"longitud": 4,
+				"alineacion": "center",
+				"ordenable": true,
+				"busqueda": true,
+				"formato": "text"
+			},
+			"fuente": {
+				"tipo": "bd",
+				"tabla": "(select id, nombre, estado from medio_pago where egreso = true) mp",
+				"id": "id",
+				"tipoId": "int",
+				"campo": "nombre",
+				"tipoCampo": "string",
+				"traeEstado": true
+			}
+		},
+		{
+			"nombre": "idFranquiciaTarjetaEMP",
+			"campoBD": "id_franquicia_tarjeta",
+			"tipo": "int",
+			"tipoGenerico": "int",
+			"titulo": "Franq. Tar.",
+			"longitud": 3,
+			"posicion": "c11",
+			"visible": true,
+			"requerido": true,
+			"defecto": "0",
+			"validaSimbolos": true,
+			"convierteMayuscula": false,
+			"opcionesListado": {
+				"visible": false,
+				"posicion": 0,
+				"titulo": "Franquicia Tar.",
+				"longitud": 3,
+				"alineacion": "center",
+				"ordenable": true,
+				"busqueda": true,
+				"formato": "text"
+			},
+			"fuente": {
+				"tipo": "bd",
+				"tabla": "franquicia_tarjeta",
+				"id": "id",
+				"tipoId": "int",
+				"campo": "nombre",
+				"tipoCampo": "string",
+				"traeEstado": true
+			}
+		},
+		{
+			"nombre": "valorEMP",
+			"campoBD": "valor",
+			"tipo": "Numeric(14,2)",
+			"tipoGenerico":"double",
+			"tipoBD": "double",
+			"titulo": "Valor Pago",
+			"longitud": 4,
+			"posicion": "c11",
+			"visible": true,
+			"requerido": true,
+			"validaSimbolos": true,
+			"convierteMayuscula": false,
+			"opcionesListado": {
+				"visible": true,
+				"posicion": 3,
+				"titulo": "Valor Pago",
+				"longitud": 4,
+				"acumula": true,
+				"alineacion": "center",
+				"ordenable": true,
+				"busqueda": true,
+				"formato": "double2"
+			},
+			"fuente": {}
+		},
+		{
+			"nombre": "detalleEMP",
+			"campoBD": "detalle",
+			"tipo": "Varchar(100)",
+			"tipoGenerico": "string",
+			"titulo": "Detalle",
+			"longitud": 2,
+			"posicion": "c11",
+			"visible": false,
+			"requerido": false,
+			"validaSimbolos": true,
+			"convierteMayuscula": false,
+			"opcionesListado": {
+				"visible": true,
+				"posicion": 2,
+				"titulo": "Detalle",
+				"longitud": 3,
+				"alineacion": "center",
+				"ordenable": true,
+				"busqueda": true,
+				"formato": "text"
+			},
+			"fuente": {}
+		},
+		{
+			"nombre": "botonGuardaEMP",
+			"campoBD": "",
+			"tipoGenerico": "control",
+			"tipoControl": "i",
+			"class": "iconFaButton fa fa-plus-square",
+			"label": "",
+			"titulo": "",
+			"accion": "$('#botonGuardaEMP').addClass('disabled');guardarEMP('EMP');",
+			"longitud": 1,
+			"posicion": "c11",
+			"visible": true,
+			"requerido": false,
+			"validaSimbolos": false,
+			"convierteMayuscula": false,
+			"opcionesListado": {
+				"visible": false,
+				"posicion": 0,
+				"titulo": "",
+				"longitud": 1,
+				"alineacion": "center",
+				"ordenable": true,
+				"busqueda": true,
+				"formato": "text"
+			},
+			"fuente": {}
+		}
+	],
+	"secciones": [],
+	"accionesListado": [
+		{
+			"nombre": "botonEliminaEMP",
+			"tipoGenerico": "control",
+			"tipoControl": "i",
+			"class": "iconFaButtonAlert fa fa-trash-o",
+			"accion": "eliminarEMP"
+		}
+	],
+	"metodoAdicional": [
+		{
+			"metodo": "listarAcumuladoXMedioPago",
+			"accion": "listarAcumulado",
+			"campoCondicion": [
+				"id_egreso"
+			],
+			"campoAcumulado": [
+				"valor",
+				"valor_impuesto"
+			],
+			"campoGroupBy": [
+				"id_medio_pago"
+			]
+		}
+	],
+	"primaryKey": [
+		"id"
+	],
+	"retornaId": true,
+	"titulo": "Consumo",
+	"orderBy": "item",
+	"groupBy": "id_egreso",
+	"accionGrabar": "grabarEMP",
+	"accionListar": "listarEMP",
+	"accionEditar": "cancelar",
+	"campoUnico": [],
+	"modificacionRestringida": {}
+}

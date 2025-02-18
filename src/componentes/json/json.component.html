@@ -1,0 +1,136 @@
+<div *ngFor="let fila of camposMain | keyvalue">
+  <div class="fila">
+    <div *ngFor="let campo of fila.value" class="columna">
+      <label *ngIf="campo.titulo">{{ decodificarHTML(campo.titulo) }}</label>
+
+      <!-- Si es un botón, renderizamos un ícono -->
+      <i
+        [id]="campo.nombre"
+        *ngIf="campo.nombre?.toLowerCase().startsWith('boton')"
+        [attr.id]="campo.nombre"
+        [class]="campo.class"
+        (click)="ejecutarAccion(campo.accion)"
+      ></i>
+
+      <!-- Si el campo tiene fuente tipo 'array', usamos ng-select con la clase personalizada -->
+      <ng-select
+        [id]="campo.nombre"
+        *ngIf="campo.fuente?.tipo === 'array'"
+        [(ngModel)]="campo.valorDefecto"
+        class="custom-ng-select"
+      >
+        <ng-option
+          *ngFor="let option of campo.fuente.array"
+          [value]="option.clave"
+        >
+          {{ option.valor }}
+        </ng-option>
+      </ng-select>
+
+      <!-- Si no es 'array' y no es un botón, usamos input estándar -->
+      <input
+        [id]="campo.nombre"
+        *ngIf="
+          campo.fuente?.tipo !== 'array' &&
+          !campo.nombre?.toLowerCase().startsWith('boton')
+        "
+        [type]="campo.tipo"
+        [maxLength]="campo.maxLength"
+        [step]="campo.step"
+        placeholder="Ingrese {{ campo.titulo }}"
+        (change)="ejecutarAccion(campo.accion)"
+      />
+    </div>
+  </div>
+</div>
+
+<button (click)="guardarCambios()">Guardar Cambios</button>
+
+<!-- Tabla de campos visibles - parte superior -->
+<div *ngIf="datos.campos && datos.campos.length > 0">
+  <table>
+    <thead>
+      <tr>
+        <th
+          *ngFor="let campo of gridMain; let i = index"
+          [attr.colspan]="campo?.opcionesListado?.longitud || 1"
+        >
+          {{ campo?.titulo || "Columna " + (i + 1) }}
+        </th>
+      </tr>
+    </thead>
+  </table>
+</div>
+
+<!-- Secciones -->
+<div *ngIf="datosSecciones && datosSecciones.length > 0">
+  <div *ngFor="let seccion of datosSecciones">
+    <fieldset>
+      <legend>{{ seccion.nombre }}</legend>
+
+      <!-- Renderizado de los campos en filas -->
+      <div *ngFor="let fila of seccion.campos">
+        <div class="fila">
+          <div *ngFor="let campo of fila" class="columna">
+            <label *ngIf="campo.titulo">{{ campo.titulo }}</label>
+
+            <!-- Si es un botón, renderizamos un ícono -->
+            <i
+              *ngIf="campo.nombre?.toLowerCase().startsWith('boton')"
+              [attr.id]="campo.nombre"
+              [class]="campo.class"
+              (click)="ejecutarAccion(campo.accion)"
+            ></i>
+
+            <!-- Si el campo tiene fuente tipo 'array', usamos ng-select con la clase personalizada -->
+            <ng-select
+              *ngIf="campo.fuente?.tipo === 'array'"
+              [(ngModel)]="campo.valorDefecto"
+              class="custom-ng-select"
+            >
+              <ng-option
+                *ngFor="let option of campo.fuente.array"
+                [value]="option.clave"
+              >
+                {{ option.valor }}
+              </ng-option>
+            </ng-select>
+
+            <!-- Si no es 'array' y no es un botón, usamos input estándar -->
+            <input
+              *ngIf="
+                campo.fuente?.tipo !== 'array' &&
+                !campo.nombre?.toLowerCase().startsWith('boton')
+              "
+              [type]="campo.tipo"
+              [maxLength]="campo.maxLength"
+              [step]="campo.step"
+              placeholder="Ingrese {{ campo.titulo }}"
+              (change)="ejecutarAccion(campo.accion)"
+            />
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Tabla debajo de cada sección -->
+    <div *ngIf="seccion.grid && seccion.grid.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th
+              *ngFor="let campo of seccion.grid; let i = index"
+              [attr.colspan]="campo?.opcionesListado?.longitud || 1"
+            >
+              {{ campo?.titulo || "Columna " + (i + 1) }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Aquí deberías agregar filas según los datos de cada campo -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
