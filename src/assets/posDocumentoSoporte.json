@@ -1612,7 +1612,7 @@
 				"visible": true,
 				"posicion": 3,
 				"titulo": "Issue Date",
-				"longitud": 1,
+				"longitud": 2,
 				"alineacion": "center",
 				"ordenable": true,
 				"busqueda": true,

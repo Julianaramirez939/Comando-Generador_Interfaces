@@ -37,7 +37,7 @@
         [type]="campo.tipo"
         [maxLength]="campo.maxLength"
         [step]="campo.step"
-        placeholder="Ingrese {{ campo.titulo }}"
+        placeholder="Ingrese {{ decodificarHTML(campo.titulo) }}"
         (change)="ejecutarAccion(campo.accion)"
       />
     </div>
@@ -47,15 +47,13 @@
 <button (click)="guardarCambios()">Guardar Cambios</button>
 
 <!-- Tabla de campos visibles - parte superior -->
+<!-- Tabla de campos visibles - parte superior -->
 <div *ngIf="datos.campos && datos.campos.length > 0">
-  <table>
+  <table class="tabla-debug">
     <thead>
       <tr>
-        <th
-          *ngFor="let campo of gridMain; let i = index"
-          [attr.colspan]="campo?.opcionesListado?.longitud || 1"
-        >
-          {{ campo?.titulo || "Columna " + (i + 1) }}
+        <th *ngFor="let grupo of gridMain" [attr.colspan]="grupo.longitud">
+          {{ decodificarHTML(grupo.titulo) }}
         </th>
       </tr>
     </thead>
@@ -105,7 +103,7 @@
               [type]="campo.tipo"
               [maxLength]="campo.maxLength"
               [step]="campo.step"
-              placeholder="Ingrese {{ campo.titulo }}"
+              placeholder="Ingrese {{ decodificarHTML(campo.titulo) }}"
               (change)="ejecutarAccion(campo.accion)"
             />
           </div>
@@ -115,14 +113,14 @@
 
     <!-- Tabla debajo de cada sección -->
     <div *ngIf="seccion.grid && seccion.grid.length > 0">
-      <table>
+      <table class="tabla-debug">
         <thead>
           <tr>
             <th
               *ngFor="let campo of seccion.grid; let i = index"
               [attr.colspan]="campo?.opcionesListado?.longitud || 1"
             >
-              {{ campo?.titulo || "Columna " + (i + 1) }}
+              {{ decodificarHTML(campo?.titulo) || "Columna " + (i + 1) }}
             </th>
           </tr>
         </thead>
@@ -133,4 +131,3 @@
     </div>
   </div>
 </div>
-

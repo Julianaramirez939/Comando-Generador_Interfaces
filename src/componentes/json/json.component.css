@@ -106,5 +106,15 @@ i {
   color: #007bff;
   cursor: pointer;
 }
+.tabla-debug {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.tabla-debug th, .tabla-debug td {
+  border: 1px solid black; /* Borde de 1px en todas las celdas */
+  padding: 8px; /* Para que el contenido no quede pegado al borde */
+  text-align: center; /* Centrado del contenido */
+}
 
 

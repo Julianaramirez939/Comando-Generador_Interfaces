@@ -67,7 +67,7 @@ export class JsonComponent implements OnInit {
           (campo: Campo) =>
             campo.visible === true &&
             (Object.keys(campo.fuente || {}).length === 0 ||
-            campo.fuente.tipo !== 'bd')
+              campo.fuente.tipo !== 'bd')
         )
         .forEach((campo: Campo) => {
           let inputType = 'text';
@@ -180,55 +180,43 @@ export class JsonComponent implements OnInit {
         (a, b) => a.opcionesListado.posicion - b.opcionesListado.posicion
       );
   
-      // Ubicar los campos en el grid, buscando el siguiente espacio libre si la posición está ocupada
-      for (const campo of camposVisibles) {
-        let columnaInicio = campo.opcionesListado.posicion;
-        const columnasOcupadas = campo.opcionesListado.longitud || 1; // Cantidad de columnas ocupadas
+      // Agrupar campos con la misma longitud y mismo título
+      const groupedFields = [];
+      let currentGroup = null;
   
-        // Evitar posiciones negativas o fuera de rango
-        if (columnaInicio < 1) {
-          console.warn(
-            `⚠️ Posición inválida (${columnaInicio}) para '${campo.titulo}', ajustando a 1.`
-          );
-          columnaInicio = 1;
-        }
+      for (let i = 0; i < camposVisibles.length; i++) {
+        const campo = camposVisibles[i];
+        const longitud = campo.opcionesListado.longitud || 1;
+        const titulo = campo.titulo || 'sin título';
   
-        let posicionDisponible = columnaInicio;
-  
-        // Buscar la siguiente posición disponible en el grid
-        while (grid[posicionDisponible - 1] !== undefined) {
-          posicionDisponible++;
-        }
-  
-        // Ahora colocamos el campo en la posición encontrada
-        for (let i = 0; i < columnasOcupadas; i++) {
-          const posicionFinal = posicionDisponible + i - 1;
-  
-          // Evitar posiciones negativas en el array
-          if (posicionFinal < 0) {
-            console.error(
-              `❌ Error: Posición negativa (${posicionFinal}) para '${campo.titulo}'.`
-            );
-            continue;
-          }
-  
-          grid[posicionFinal] = {
-            opcionesListado: campo.opcionesListado,
-            titulo: campo.titulo,
+        // Si el grupo actual tiene la misma longitud y título, añadir el campo
+        if (currentGroup && currentGroup.longitud === longitud && currentGroup.titulo === titulo) {
+          currentGroup.campos.push(campo);
+        } else {
+          // Si no, empezar un nuevo grupo con longitud y título específicos
+          if (currentGroup) groupedFields.push(currentGroup);
+          currentGroup = {
+            longitud: longitud,
+            titulo: titulo,
+            campos: [campo],
           };
         }
-  
-        console.log(
-          `Campo '${campo.titulo}' colocado en la posición: ${posicionDisponible}`
-        );
       }
+      if (currentGroup) groupedFields.push(currentGroup); // Agregar el último grupo
   
-      // Mostrar el grid final en consola
+      // Asignamos el grid con los campos agrupados
+      grid = groupedFields.map(group => ({
+        titulo: group.titulo,
+        longitud: group.longitud,
+        campos: group.campos,
+      }));
+  
       console.log('📌 Grid final:', grid);
     }
   
     return [camposPorFila, grid];
   }
+  
   
 
   async cargarJson(nombreJson: string) {
