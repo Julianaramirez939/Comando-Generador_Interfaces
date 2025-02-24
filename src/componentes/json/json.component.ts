@@ -1,13 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, NgModule, OnInit } from '@angular/core';
+import { Component, NgModule, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Campo } from '../../interfaces/campos';
 import { Listado } from '../../interfaces/listado';
-import { Seccion } from '../../interfaces/secciones';
-import jsonMain from '../../assets/posDocumentoSoporte.json';
-import jsonSeccion from '../../assets/posEgresoItem.json';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule, NgModel } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
+import { ObtenerDataService } from '../../servicios/obtener-data.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-json',
@@ -16,6 +15,7 @@ import { NgSelectModule } from '@ng-select/ng-select';
   templateUrl: './json.component.html',
   styleUrls: ['./json.component.css'],
 })
+
 export class JsonComponent implements OnInit {
   datosSecciones: any[] = [];
   jsonSeccion: any = {};
@@ -24,42 +24,222 @@ export class JsonComponent implements OnInit {
   datos: any = {};
   gridMain: any = [];
   gridSecciones: any = [];
+  mostrarListado: boolean = true;
+  mostrarFormulario: boolean = true;
+  mostrarConsulta: boolean = true;
+  datosTablaMain: any[] = [];
+  datosGridMain: any[] = [];
+  mapeoColumnas: any = {};
+  mapeoSecciones: any = [];
+  alternaListadoFormulario:boolean = true;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef,
+    private obtenerDataService: ObtenerDataService,
+    private route: ActivatedRoute
+  ) {}
 
   async ngOnInit(): Promise<void> {
+    const nombreJson = this.route.snapshot.paramMap.get('nombreJson') || '';
+    const jsonMain: any = await this.cargarJson(nombreJson);
+  
+    this.alternaListadoFormulario = jsonMain.alternaListadoFormulario
     const [camposPorFila, grid] = this.generarEstructura(jsonMain);
+    console.log('jsonMain', jsonMain);
     this.camposMain = camposPorFila;
     this.gridMain = grid; // Guardar el grid principal
+    this.datosGridMain = this.datosTablaMain;
     console.log('campos main', this.camposMain);
-    this.jsonSeccion = jsonSeccion;
+
+    this.mapeoColumnas = this.generarMapeoColumnas();
+    
+
+    let consulta = `SELECT * FROM ${jsonMain.tabla}`;
+
+    if (jsonMain.groupBy) {
+     consulta += ` GROUP BY ${jsonMain.groupBy}`;
+    }
+
+    if (jsonMain.orderBy) {
+      consulta += ` ORDER BY ${jsonMain.orderBy}`;
+    }
+
+    consulta += ';'; 
+
+    const dataMain: any = await this.obtenerData(consulta);
+
+    console.log('dataMain', dataMain);
+
+    this.datosGridMain = dataMain;
+    this.datosTablaMain = dataMain;
+
+    console.log('datosGridMain', this.datosGridMain);
+
+    if (jsonMain.alternaListadoFormulario === true) {
+      console.log('alternaListado es true');
+      this.mostrarListado = true;
+      this.mostrarFormulario = false;
+      console.log("estado Mostrar Listado", this.mostrarListado)
+      console.log("estado Mostrar Formulario", this.mostrarFormulario)
+    }
 
     if (jsonMain.secciones && jsonMain.secciones.length > 0) {
       for (let seccion of jsonMain.secciones) {
         if (seccion.alternaListadoFormulario == false) {
-          const jsonprueba = await this.cargarJson(seccion.origen);
+          const jsonprueba:any= await this.cargarJson(seccion.origen);
 
           const [camposPorFilaSeccion, gridSeccion] =
             this.generarEstructura(jsonprueba);
           const camposSeccion = camposPorFilaSeccion;
 
           this.gridSecciones.push(gridSeccion);
+          console.log('gridSeccion', gridSeccion);
+
+          let consulta = `SELECT * FROM ${jsonprueba.tabla}`;
+
+          if (jsonprueba.orderBy) {
+            consulta += ` ORDER BY ${jsonprueba.orderBy}`;
+          }
+
+          const dataSeccion: any = await this.obtenerData(consulta);
 
           this.datosSecciones.push({
             nombre: seccion.nombre,
             campos: Object.values(camposSeccion),
             grid: gridSeccion,
+            gridInfo: dataSeccion,
           });
         }
       }
       console.log('datosSecciones', this.datosSecciones);
+
+      // Mover la asignación aquí, después de que datosSecciones esté lleno
+      this.mapeoSecciones = this.generarMapeoSecciones();
     }
   }
+
+  alternarListado() {
+    if (this.alternaListadoFormulario == true) {
+      this.mostrarListado = !this.mostrarListado;
+      this.mostrarFormulario = !this.mostrarFormulario;
+      console.log("estado Mostrar Listado", this.mostrarListado)
+      console.log("estado Mostrar Formulario", this.mostrarFormulario)
+      console.log("click en boton alternaListado")
+    }
+  }
+  generarMapeoColumnas(): any {
+    const mapeo: any = {};
+    Object.values(this.gridMain).forEach((elemento: any) => {
+      if (elemento.titulo && elemento.campoBD) {
+        let nombreModificado = elemento.campoBD;
+
+        mapeo[elemento.titulo] = nombreModificado;
+      }
+    });
+
+    console.log('mapeo', mapeo);
+    return mapeo;
+  }
+  generarMapeoSecciones(): any {
+    const mapeo: any = {};
+  
+    console.log('✅ datosSecciones en generarMapeoSecciones:', this.datosSecciones);
+  
+    this.datosSecciones.forEach((seccion: any, index: number) => {
+      console.log(`🔍 Iterando sobre sección #${index + 1}:`, seccion);
+  
+      if (Array.isArray(seccion.grid) && seccion.grid.length > 0) {
+        seccion.grid.forEach((campo: any) => {
+          if (campo && campo.titulo && campo.campoBD) {
+            console.log(`📌 Agregando campo - Sección #${index + 1}:`, campo.titulo, '➡', campo.campoBD);
+            mapeo[campo.titulo] = campo.campoBD; // Aquí podría estar sobrescribiendo
+          }
+        });
+      } else {
+        console.warn(`⚠️ La sección #${index + 1} no tiene grid válido`, seccion.grid);
+      }
+    });
+  
+    console.log('📝 Resultado final del mapeo:', mapeo);
+    return mapeo;
+  }
+  
+
+  seleccionarFila(fila: any) {
+    console.log('Fila seleccionada:', fila);
+
+    Object.values(this.camposMain).forEach((filaCampos: any) => {
+      filaCampos.forEach((campo: any) => {
+        const key = this.mapeoColumnas[campo.titulo]; // Obtener la clave correcta
+        let valor = fila[key] || fila[campo.nombre]; // Obtener el valor correspondiente
+
+        if (valor && typeof valor === 'string' && valor.includes('T')) {
+          const fecha = new Date(valor);
+
+          if (campo.tipo === 'date') {
+            // Formato "YYYY-MM-DD" para input date
+            valor = fecha.toISOString().split('T')[0];
+          } else if (campo.tipo === 'datetime-local') {
+            // Formato "YYYY-MM-DDTHH:mm" para input datetime-local
+            valor = fecha.toISOString().slice(0, 16);
+          }
+        }
+
+        campo.valorDefecto = valor;
+      });
+    });
+
+    // Forzamos la actualización del DOM
+    this.cdr.detectChanges();
+  }
+  seleccionarFilaSeccion(fila: any,index:number) {
+    console.log('Fila seleccionada en sección:', fila);
+    console.log('Datos de las secciones antes de actualizar:', this.datosSecciones);
+  
+    this.datosSecciones[index].campos.forEach((filaCampo: any) => {
+        filaCampo.forEach((campo:any) => {
+          console.log("campo", campo)
+          console.log("campo.titulo", campo.titulo)
+          console.log("fila",fila)
+          console.log("this.mapeoSecciones[campo.titulo",this.mapeoSecciones[campo.titulo])
+          const key = this.mapeoSecciones[campo.titulo]; // Obtener la clave correcta
+          console.log("key", key)
+          let valor = fila[key]; // Obtener el valor correspondiente
+          console.log("fila[key]",fila[key])
+  
+          console.log("valor", valor)
+  
+          if (valor && typeof valor === 'string' && valor.includes('T')) {
+            const fecha = new Date(valor);
+            if (campo.tipo === 'date') {
+              valor = fecha.toISOString().split('T')[0]; // Formato "YYYY-MM-DD"
+            } else if (campo.tipo === 'datetime-local') {
+              valor = fecha.toISOString().slice(0, 16); // Formato "YYYY-MM-DDTHH:mm"
+            }
+          }
+  
+          console.log("mapeoSecciones", this.mapeoSecciones)
+          console.log(`✅ Campo sin actualizar: ${campo.titulo} = ${campo.valorDefecto}`);
+  
+    
+          campo.valorDefecto = valor; // Asignamos el valor al input
+          console.log(`✅ Campo actualizado: ${campo.titulo} = ${campo.valorDefecto}`);
+        });
+    
+      console.log('Datos de las secciones después de actualizar:', this.datosSecciones);
+        });
+       
+  
+    this.cdr.detectChanges(); // Forzar actualización de la vista
+  }
+  
+
   generarEstructura(json: any) {
     this.datos = json;
     const camposPorFila: { [key: number]: any[] } = {};
     let grid: any = []; // Grid donde se colocarán los campos
-  
+
     if (this.datos.campos && this.datos.campos.length > 0) {
       // Filtrar y procesar los campos que son visibles y que no son de tipo "bd" en su fuente
       this.datos.campos
@@ -75,14 +255,14 @@ export class JsonComponent implements OnInit {
           let step: string | undefined = undefined;
           let opciones: any[] = [];
           let valorDefecto: string | undefined = undefined;
-  
+
           // Procesamiento del campo (opciones, valor por defecto, tipo, etc.)
           if (campo.fuente?.tipo === 'array' && campo.fuente.array) {
             opciones = campo.fuente.array.map((option) => ({
               clave: option.clave,
               valor: option.valor,
             }));
-  
+
             const valorDefectoObj = campo.fuente.array.find(
               (option) => option.defecto
             );
@@ -90,7 +270,7 @@ export class JsonComponent implements OnInit {
               valorDefecto = valorDefectoObj.clave;
             }
           }
-  
+
           if (campo.tipo?.startsWith('Varchar')) {
             inputType = 'text';
             const match = campo.tipo.match(/\((\d+)\)/);
@@ -113,7 +293,7 @@ export class JsonComponent implements OnInit {
           } else if (campo.tipo === 'date') {
             inputType = 'date';
           }
-  
+
           const campoProcesado = {
             titulo: campo.titulo,
             tipo: inputType,
@@ -137,14 +317,14 @@ export class JsonComponent implements OnInit {
             },
             valorDefecto: valorDefecto,
           };
-  
+
           const fila = campo.posicion || 1;
           if (!camposPorFila[fila]) {
             camposPorFila[fila] = [];
           }
           camposPorFila[fila].push(campoProcesado);
         });
-  
+
       // Procesar los botones (como lo mencionaste previamente)
       this.datos.campos.forEach((campo: Campo) => {
         if (
@@ -158,7 +338,7 @@ export class JsonComponent implements OnInit {
             accion: campo.accion || '',
             tipoControl: campo.tipoControl || 'i',
           };
-  
+
           const fila = campo.posicion || 1;
           if (!camposPorFila[fila]) {
             camposPorFila[fila] = [];
@@ -166,31 +346,39 @@ export class JsonComponent implements OnInit {
           camposPorFila[fila].push(botonProcesado);
         }
       });
-  
+
       // Filtrar los campos con opcionesListado.visible === true
       const camposVisibles: any[] = this.datos.campos
         .filter((listado: Listado) => listado.opcionesListado?.visible)
         .map((campo: any) => ({
           opcionesListado: campo.opcionesListado,
           titulo: campo.titulo,
+          nombre: campo.nombre,
+          campoBD: campo.campoBD,
         }));
-  
+
       // Ordenar los campos visibles por su posición
       camposVisibles.sort(
         (a, b) => a.opcionesListado.posicion - b.opcionesListado.posicion
       );
-  
+
       // Agrupar campos con la misma longitud y mismo título
       const groupedFields = [];
       let currentGroup = null;
-  
+
       for (let i = 0; i < camposVisibles.length; i++) {
         const campo = camposVisibles[i];
         const longitud = campo.opcionesListado.longitud || 1;
         const titulo = campo.titulo || 'sin título';
-  
+        const nombre = campo.nombre;
+        const campoBD = campo.campoBD;
+
         // Si el grupo actual tiene la misma longitud y título, añadir el campo
-        if (currentGroup && currentGroup.longitud === longitud && currentGroup.titulo === titulo) {
+        if (
+          currentGroup &&
+          currentGroup.longitud === longitud &&
+          currentGroup.titulo === titulo
+        ) {
           currentGroup.campos.push(campo);
         } else {
           // Si no, empezar un nuevo grupo con longitud y título específicos
@@ -198,28 +386,45 @@ export class JsonComponent implements OnInit {
           currentGroup = {
             longitud: longitud,
             titulo: titulo,
+            nombre: nombre,
+            campoBD: campoBD,
             campos: [campo],
           };
         }
       }
       if (currentGroup) groupedFields.push(currentGroup); // Agregar el último grupo
-  
+
       // Asignamos el grid con los campos agrupados
-      grid = groupedFields.map(group => ({
+      grid = groupedFields.map((group) => ({
         titulo: group.titulo,
+        nombre: group.nombre,
+        campoBD: group.campoBD,
         longitud: group.longitud,
         campos: group.campos,
       }));
-  
+
       console.log('📌 Grid final:', grid);
     }
-  
+
     return [camposPorFila, grid];
   }
-  
-  
+  obtenerData(consulta: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.obtenerDataService.consultaData(consulta).subscribe({
+        next: (data) => {
+          console.log('data en obtenerData', data);
+          resolve(data.data); // Devuelve los datos al resolver la promesa
+        },
+        error: (err) => {
+          console.error('Error obteniendo documentos de soporte:', err);
+          reject(err);
+        },
+      });
+    });
+  }
 
   async cargarJson(nombreJson: string) {
+    console.log("nombre json a traer", nombreJson)
     let json = {};
     await fetch(`http://localhost:3000/data/${nombreJson}`)
       .then((response) => {
@@ -330,14 +535,14 @@ export class JsonComponent implements OnInit {
             console.error(`Función ${functionName} no encontrada.`);
           }
         } else {
-          console.log(`Ejecutando código: ${cmd}`);
-          eval(cmd);
+          console.warn(`Comando ignorado: ${cmd} (no es una función válida)`);
         }
       }
     } catch (error) {
       console.error('Error ejecutando la acción:', error);
     }
   }
+
   guardarEMP(valor: string) {
     console.log(`guardarEMP ejecutado con valor: ${valor}`);
   }

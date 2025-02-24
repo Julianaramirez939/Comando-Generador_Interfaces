@@ -7,4 +7,6 @@ export interface Listado {
     formato: string;
   };
   titulo?: string;
+  nombre?: string;
+  campoBD?: string;
 }

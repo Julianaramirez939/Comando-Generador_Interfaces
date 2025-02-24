@@ -116,5 +116,8 @@ i {
   padding: 8px; /* Para que el contenido no quede pegado al borde */
   text-align: center; /* Centrado del contenido */
 }
+.filaspares tbody tr:nth-child(even) {
+  background-color: #d1cccc; /* Gris claro */
+}
 
 
