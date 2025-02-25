@@ -1,5 +1,11 @@
 <div *ngIf="mostrarFormulario">
-  <button (click)="alternarListado()">listar</button>
+  <div class="botones-container">
+    <button (click)="alternarListado()">Listar</button>
+    <div *ngFor="let boton of botonesGeneradosFormulario">
+      <button (click)="ejecutarAccion(boton.accion)">{{ boton.nombre }}</button>
+    </div>
+  </div>
+
   <div *ngFor="let fila of camposMain | keyvalue">
     <div class="fila">
       <div *ngFor="let campo of fila.value" class="columna">
@@ -96,38 +102,46 @@
         </div>
       </fieldset>
       <!-- Tabla debajo de cada sección -->
-      <div *ngIf="seccion.grid && seccion.grid.length > 0">
-        <table class="tabla-debug filaspares">
-          <thead>
-            <tr>
-              <th
-                *ngFor="let campo of seccion.grid; let i = index"
-                [attr.colspan]="campo?.opcionesListado?.longitud || 1"
+      <div class="tabla-container">
+        <div *ngIf="seccion.grid && seccion.grid.length > 0">
+          <table class="tabla-debug filaspares">
+            <thead>
+              <tr>
+                <th
+                  *ngFor="let campo of seccion.grid; let i = index"
+                  [attr.colspan]="campo?.opcionesListado?.longitud || 1"
+                >
+                  {{ decodificarHTML(campo?.titulo) || "Columna " + (i + 1) }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                *ngFor="let fila of seccion.gridInfo"
+                (click)="seleccionarFilaSeccion(fila, i)"
               >
-                {{ decodificarHTML(campo?.titulo) || "Columna " + (i + 1) }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              *ngFor="let fila of seccion.gridInfo"
-              (click)="seleccionarFilaSeccion(fila, i)"
-            >
-              <td
-                *ngFor="let grupo of seccion.grid"
-                [attr.colspan]="grupo?.opcionesListado?.longitud || 1"
-              >
-                {{ fila[mapeoSecciones?.[grupo.titulo]] || "N/A" }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                <td
+                  *ngFor="let grupo of seccion.grid"
+                  [attr.colspan]="grupo?.opcionesListado?.longitud || 1"
+                >
+                  {{ fila[mapeoSecciones?.[grupo.titulo]] || "N/A" }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <div *ngIf="mostrarListado">
+  <div class="botones-container">
+    <div *ngFor="let boton of botonesGeneradosListado">
+      <button (click)="ejecutarAccion(boton.accion)">{{ boton.nombre }}</button>
+    </div>
+  </div>
+
   <!-- Tabla de campos visibles - parte superior -->
   <div *ngIf="datos.campos && datos.campos.length > 0">
     <table class="tabla-debug filaspares">

@@ -1,98 +1,106 @@
 /* Contenedor de filas */
 .fila {
-    display: flex;
-    flex-wrap: wrap; /* Asegura que los elementos se ajusten si no caben en una fila */
-    gap: 20px;  /* Espacio entre las columnas */
-    margin-bottom: 15px;  /* Espacio entre las filas */
-    justify-content: flex-start; /* Alineación de las columnas */
-  }
-  
-  /* Cada columna, asegurando que no se sobrepase el espacio */
-  .columna {
-    flex: 1 1 200px; /* Se adapta al espacio disponible */
-    min-width: 200px; /* Evita que las columnas sean demasiado pequeñas */
-    max-width: 300px; /* Controla que no sean demasiado grandes */
-  }
-  
-  /* Estilo para las etiquetas (labels) */
-  label {
-    font-size: 14px;
-    color: #333;
-    font-weight: 600;
-    margin-bottom: 8px; /* Espacio debajo de la etiqueta */
-    display: block;
-  }
-  
-  /* Estilos genéricos para los inputs */
-  input, select, textarea {
-    width: 100%;
-    padding: 12px 15px;
-    font-size: 16px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-sizing: border-box; /* Asegura que el padding no afecte el ancho total */
-    background-color: #f9f9f9;
-    transition: border-color 0.3s ease;
-  }
-  
-  /* Estilo al recibir focus para mejorar la accesibilidad */
-  input:focus, select:focus, textarea:focus {
-    border-color: #007bff;  /* Color al tener el foco */
-    outline: none;  /* Quitar outline */
-    background-color: #fff; /* Fondo blanco al hacer focus */
-  }
+  display: flex;
+  flex-wrap: wrap; /* Asegura que los elementos se ajusten si no caben en una fila */
+  gap: 20px; /* Espacio entre las columnas */
+  margin-bottom: 15px; /* Espacio entre las filas */
+  justify-content: flex-start; /* Alineación de las columnas */
+}
 
-  input[type="number"]::-webkit-outer-spin-button, 
-  input[type="number"]::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  
-  /* Estilo para inputs de tipo 'date' y 'datetime-local' */
-  input[type="date"], input[type="datetime-local"] {
-    padding: 12px 15px;
-    font-size: 16px;
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-  }
-  
-  /* Estilo para inputs de tipo 'text' */
-  input[type="text"], input[type="email"], input[type="tel"] {
-    background-color: #f9f9f9;
-  }
-  
-  /* Estilos para inputs de tipo 'checkbox' y 'radio' */
-  input[type="checkbox"], input[type="radio"] {
-    width: auto;
-    margin-right: 8px;
-    margin-top: 8px;
-  }
-  
-  /* Espaciado extra entre inputs cuando se alinean */
-  input {
-    margin-bottom: 12px; /* Espaciado entre los inputs */
-  }
-  
-  /* Asegurando que las filas se ajusten bien */
-  .fila {
-    flex-wrap: wrap; /* Permite que las columnas se ajusten a pantallas pequeñas */
-  }
-  
-  /* Estilo para textos largos en inputs */
-  input::placeholder {
-    color: #aaa;
-    font-style: italic;
-  }
-  
-  textarea {
-    resize: vertical; /* Permite solo redimensionar hacia arriba o abajo */
-    min-height: 80px;
-    max-height: 200px;
-  }
-  /* Estilo para el ng-select */
+/* Cada columna, asegurando que no se sobrepase el espacio */
+.columna {
+  flex: 1 1 200px; /* Se adapta al espacio disponible */
+  min-width: 200px; /* Evita que las columnas sean demasiado pequeñas */
+  max-width: 300px; /* Controla que no sean demasiado grandes */
+}
+
+/* Estilo para las etiquetas (labels) */
+label {
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 8px; /* Espacio debajo de la etiqueta */
+  display: block;
+}
+
+/* Estilos genéricos para los inputs */
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-sizing: border-box; /* Asegura que el padding no afecte el ancho total */
+  background-color: #f9f9f9;
+  transition: border-color 0.3s ease;
+}
+
+/* Estilo al recibir focus para mejorar la accesibilidad */
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #007bff; /* Color al tener el foco */
+  outline: none; /* Quitar outline */
+  background-color: #fff; /* Fondo blanco al hacer focus */
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Estilo para inputs de tipo 'date' y 'datetime-local' */
+input[type="date"],
+input[type="datetime-local"] {
+  padding: 12px 15px;
+  font-size: 16px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+/* Estilo para inputs de tipo 'text' */
+input[type="text"],
+input[type="email"],
+input[type="tel"] {
+  background-color: #f9f9f9;
+}
+
+/* Estilos para inputs de tipo 'checkbox' y 'radio' */
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  margin-right: 8px;
+  margin-top: 8px;
+}
+
+/* Espaciado extra entre inputs cuando se alinean */
+input {
+  margin-bottom: 12px; /* Espaciado entre los inputs */
+}
+
+/* Asegurando que las filas se ajusten bien */
+.fila {
+  flex-wrap: wrap; /* Permite que las columnas se ajusten a pantallas pequeñas */
+}
+
+/* Estilo para textos largos en inputs */
+input::placeholder {
+  color: #aaa;
+  font-style: italic;
+}
+
+textarea {
+  resize: vertical; /* Permite solo redimensionar hacia arriba o abajo */
+  min-height: 80px;
+  max-height: 200px;
+}
+/* Estilo para el ng-select */
 .ng-select {
-  font-family: 'Arial', sans-serif; /* Fuentes más modernas */
+  font-family: "Arial", sans-serif; /* Fuentes más modernas */
   border-radius: 8px; /* Bordes redondeados */
   background-color: #f4f7fc; /* Fondo suave */
   border: 1px solid #d1d8e0; /* Bordes de color gris suave */
@@ -106,18 +114,87 @@ i {
   color: #007bff;
   cursor: pointer;
 }
-.tabla-debug {
-  border-collapse: collapse;
-  width: 100%;
-}
 
-.tabla-debug th, .tabla-debug td {
+.tabla-debug th,
+.tabla-debug td {
   border: 1px solid black; /* Borde de 1px en todas las celdas */
   padding: 8px; /* Para que el contenido no quede pegado al borde */
   text-align: center; /* Centrado del contenido */
 }
 .filaspares tbody tr:nth-child(even) {
   background-color: #d1cccc; /* Gris claro */
+}.botones-container {
+  display: flex;
+  gap: 12px; /* Espaciado entre los botones */
+  flex-wrap: wrap; /* Permite que los botones se ajusten si no caben en una línea */
+  justify-content: center; /* Centra los botones horizontalmente */
+  padding: 10px;
 }
 
+/* Estilo para los botones */
+.botones-container button {
+  background-color: #007bff; /* Azul fuerte */
+  color: white; /* Texto en blanco */
+  font-size: 16px; /* Tamaño de fuente más grande */
+  font-weight: bold;
+  padding: 12px 20px; /* Espaciado interno para hacerlo más grande */
+  border: none; /* Sin borde */
+  border-radius: 6px; /* Bordes redondeados */
+  cursor: pointer;
+  transition: all 0.3s ease-in-out; /* Transición suave */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Sombra ligera */
+}
+
+/* Efecto hover */
+.botones-container button:hover {
+  background-color: #0056b3; /* Azul más oscuro al pasar el mouse */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); /* Sombra más pronunciada */
+  transform: translateY(-2px); /* Efecto de levantamiento */
+}
+
+/* Efecto al presionar */
+.botones-container button:active {
+  background-color: #004494; /* Azul aún más oscuro */
+  transform: translateY(0); /* Volver a su lugar */
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1); /* Reducir sombra */
+}
+
+.tabla-container {
+  max-width: 100%; /* Para que no se desborde del contenedor padre */
+  max-height: 400px; /* Ajusta la altura máxima de la tabla */
+  overflow: auto; /* Scroll horizontal y vertical si es necesario */
+  border: 1px solid #ccc; /* Borde opcional para visualización */
+  position: relative; /* Necesario para que los elementos internos usen "position: absolute" */
+}
+
+/* Estilos generales de la tabla */
+.tabla-debug {
+  width: 100%; /* Para que la tabla ocupe todo el ancho del contenedor */
+  border-collapse: collapse; /* Para mejorar la apariencia */
+}
+
+/* Encabezado de la tabla (fijo en la parte superior) */
+.tabla-debug thead {
+  position: sticky;
+  top: 0; /* Se mantiene en la parte superior */
+  background-color: #a5a5a5; /* Color de fondo azul */
+  color: rgb(0, 0, 0); /* Letras blancas */
+  z-index: 10; /* Asegura que se mantenga por encima del contenido */
+}
+
+/* Estilo de las celdas del encabezado */
+.tabla-debug th {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+  font-weight: bold;
+}
+
+/* Estilo de las celdas del cuerpo de la tabla */
+.tabla-debug td {
+  padding: 8px;
+  border: 1px solid #ddd;
+  text-align: left;
+  background-color: white; /* Fondo blanco para diferenciar */
+}
 

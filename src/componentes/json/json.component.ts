@@ -30,7 +30,8 @@ export class JsonComponent implements OnInit {
   mapeoColumnas: any = {};
   mapeoSecciones: any = [];
   alternaListadoFormulario: boolean = true;
-
+  botonesGeneradosFormulario: any[] = [];
+  botonesGeneradosListado: any[] = [];
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
@@ -44,6 +45,9 @@ export class JsonComponent implements OnInit {
 
     this.alternaListadoFormulario = jsonMain.alternaListadoFormulario;
     const [camposPorFila, grid] = this.generarEstructura(jsonMain);
+    this.generarBotonesFormulario(jsonMain);
+    this.generarBotonesListado(jsonMain);
+
     console.log('jsonMain', jsonMain);
     this.camposMain = camposPorFila;
     this.gridMain = grid; // Guardar el grid principal
@@ -191,6 +195,159 @@ export class JsonComponent implements OnInit {
     });
 
     this.cdr.detectChanges();
+  }
+
+  async generarBotonesFormulario(json: any) {
+    let opcionesMenu: any[] = [];
+
+    if (
+      json?.seccionesBody?.formulario?.construye === true &&
+      Array.isArray(json.seccionesBody.formulario.botones)
+    ) {
+      if (json.seccionesBody.formulario.botones.length === 0) {
+        console.log('No existen botones');
+
+        let consultaPermisos = `SELECT * FROM aplicacion_permiso WHERE id_aplicacion = ${json.idAplicacion};`;
+
+        try {
+          // Obtener permisos
+          const dataPermisos: any = await this.obtenerData(consultaPermisos);
+          console.log('Resultado de la primera consulta:', dataPermisos);
+
+          if (dataPermisos.length > 0) {
+            const idsPermisos = dataPermisos
+              .map((permiso: any) => permiso.id_permiso)
+              .join(',');
+
+            let consultaBotones = `SELECT * FROM permiso WHERE id IN (${idsPermisos});`;
+
+            // Obtener botones desde la base de datos
+            const dataBotones: any = await this.obtenerData(consultaBotones);
+            console.log('Resultado de la segunda consulta:', dataBotones);
+
+            // Guardar los botones con su id y nombre original
+            opcionesMenu = dataBotones.map((boton: any) => ({
+              id: boton.id,
+              nombre: boton.nombre,
+            }));
+
+            this.botonesGeneradosFormulario = opcionesMenu;
+            console.log('Botones generados:', this.botonesGeneradosFormulario);
+          }
+        } catch (error) {
+          console.error('Error al obtener los botones:', error);
+        }
+      } else {
+        console.log(
+          'Existen botones en JSON:',
+          json.seccionesBody.formulario.botones
+        );
+
+        let consultaBotones = `SELECT * FROM permiso;`;
+
+        try {
+          const dataBotones: any = await this.obtenerData(consultaBotones);
+          console.log('Botones obtenidos de la base de datos:', dataBotones);
+
+          // Crear un mapa de botones de la base de datos por ID
+          const botonesDB = new Map(
+            dataBotones.map((boton: any) => [boton.id.toString(), boton])
+          );
+
+          opcionesMenu = json.seccionesBody.formulario.botones.map(
+            (botonStr: string) => {
+              const partes = botonStr.split('|'); // Separar por "|"
+              const id = partes[0];
+
+              if (botonesDB.has(id)) {
+                const botonDB = botonesDB.get(id) as {
+                  id: number;
+                  nombre: string;
+                }; // ✅ Solución
+
+                return {
+                  id: parseInt(id),
+                  nombre: partes[1] || botonDB.nombre, // Si no tiene nombre en JSON, usa el de la BD
+                  accion:
+                    partes[2] ||
+                    `console.log('Ejecutando acción para ${botonDB.nombre}');`,
+                };
+              } else {
+                console.warn(
+                  `Botón con ID ${id} no encontrado en la base de datos`
+                );
+                return { id: parseInt(id), nombre: `Opción ${id}` };
+              }
+            }
+          );
+
+          this.botonesGeneradosFormulario = opcionesMenu;
+          console.log('Botones generados:', this.botonesGeneradosFormulario);
+        } catch (error) {
+          console.error('Error al obtener botones:', error);
+        }
+      }
+    }
+
+    return opcionesMenu;
+  }
+  async generarBotonesListado(json: any) {
+    let opcionesMenu: any[] = [];
+
+    if (
+      json?.seccionesBody?.listado?.construye === true &&
+      Array.isArray(json.seccionesBody.listado.botones)
+    ) {
+      if (json.seccionesBody.listado.botones.length === 0) {
+        console.log(
+          'No existen botones en LISTADO. Consultando base de datos...'
+        );
+
+        let consultaPermisos = `SELECT * FROM aplicacion_permiso WHERE id_aplicacion = ${json.idAplicacion};`;
+
+        try {
+          // Obtener permisos
+          const dataPermisos: any = await this.obtenerData(consultaPermisos);
+          console.log(
+            'Resultado de la primera consulta (LISTADO):',
+            dataPermisos
+          );
+
+          if (dataPermisos.length > 0) {
+            const idsPermisos = dataPermisos
+              .map((permiso: any) => permiso.id_permiso)
+              .join(',');
+
+            let consultaBotones = `SELECT * FROM permiso WHERE id IN (${idsPermisos});`;
+
+            // Obtener botones desde la base de datos
+            const dataBotones: any = await this.obtenerData(consultaBotones);
+            console.log(
+              'Resultado de la segunda consulta (LISTADO):',
+              dataBotones
+            );
+
+            // Guardar los botones con su id y nombre original
+            opcionesMenu = dataBotones.map((boton: any) => ({
+              id: boton.id,
+              nombre: boton.nombre,
+            }));
+
+            this.botonesGeneradosListado = opcionesMenu;
+            console.log(
+              'Botones generados en LISTADO:',
+              this.botonesGeneradosListado
+            );
+          }
+        } catch (error) {
+          console.error('Error al obtener los botones (LISTADO):', error);
+        }
+      } else {
+        console.log('Existen botones en LISTADO. No se realiza consulta.');
+      }
+    }
+
+    return opcionesMenu;
   }
 
   generarEstructura(json: any) {
