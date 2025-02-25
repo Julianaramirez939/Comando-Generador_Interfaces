@@ -124,7 +124,7 @@
                   *ngFor="let grupo of seccion.grid"
                   [attr.colspan]="grupo?.opcionesListado?.longitud || 1"
                 >
-                  {{ fila[mapeoSecciones?.[grupo.titulo]] || "N/A" }}
+                  {{ fila[mapeoSecciones?.[grupo.titulo]] || "" }}
                 </td>
               </tr>
             </tbody>
@@ -158,7 +158,7 @@
           (click)="seleccionarFila(fila); alternarListado()"
         >
           <td *ngFor="let grupo of gridMain" [attr.colspan]="grupo.longitud">
-            {{ fila[mapeoColumnas?.[grupo.titulo]] || "N/A" }}
+            {{ fila[mapeoColumnas?.[grupo.titulo]] || "" }}
           </td>
         </tr>
       </tbody>

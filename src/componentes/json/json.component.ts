@@ -71,6 +71,7 @@ export class JsonComponent implements OnInit {
     const dataMain: any = await this.obtenerData(consulta);
 
     this.datosGridMain = dataMain;
+    console.log("datosGridMain",this.datosGridMain)
     this.datosTablaMain = dataMain;
 
     if (jsonMain.alternaListadoFormulario === true) {
