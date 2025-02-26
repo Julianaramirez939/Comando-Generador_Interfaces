@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, NgModule, OnInit, ChangeDetectorRef } from '@angular/core';
+import {
+  Component,
+  NgModule,
+  OnInit,
+  ChangeDetectorRef,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
 import { Campo } from '../../interfaces/campos';
 import { Listado } from '../../interfaces/listado';
 import { HttpClient } from '@angular/common/http';
@@ -7,6 +14,7 @@ import { FormsModule, NgModel } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { ObtenerDataService } from '../../servicios/obtener-data.service';
 import { ActivatedRoute } from '@angular/router';
+import { fromEvent, of, Subscription, throttleTime } from 'rxjs';
 
 @Component({
   selector: 'app-json',
@@ -32,23 +40,87 @@ export class JsonComponent implements OnInit {
   alternaListadoFormulario: boolean = true;
   botonesGeneradosFormulario: any[] = [];
   botonesGeneradosListado: any[] = [];
+  accionesListado: any[] = [];
+  seccionesData: { [key: string]: { datos: any[]; offset: number } } = {};
+
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
     private obtenerDataService: ObtenerDataService,
     private route: ActivatedRoute
   ) {}
+  jsonMain: any;
+  @ViewChild('tablaContainer', { static: false }) tablaContainer!: ElementRef;
+  limit = 40;
+  limitSeccion = 20;
+
+  offset = 0;
+  offsetSeccion = 0;
+  scrollSubscription!: Subscription;
+
+  ngAfterViewInit() {
+    // Esperar un breve momento para asegurarse de que el DOM está listo
+    setTimeout(() => {
+      if (this.tablaContainer) {
+        console.log('📌 tablaContainer encontrado:', this.tablaContainer);
+
+        // Detecta el scroll con RxJS
+        this.scrollSubscription = fromEvent(
+          this.tablaContainer.nativeElement,
+          'scroll'
+        )
+          .pipe(throttleTime(300)) // Evita llamadas excesivas
+          .subscribe(() => {
+            if (
+              this.tablaContainer.nativeElement.scrollTop +
+                this.tablaContainer.nativeElement.clientHeight >=
+              this.tablaContainer.nativeElement.scrollHeight * 0.9
+            ) {
+              this.cargarMasDatos();
+            }
+          });
+      } else {
+        console.error(
+          '⚠️ No se encontró .tabla-main-container después del timeout'
+        );
+      }
+    }, 100); // Espera 100ms para asegurar que el DOM cargó completamente
+  }
+
+  async cargarMasDatos() {
+    this.offset++;
+    let consulta = `SELECT * FROM ${this.jsonMain.tabla}`;
+
+    if (this.jsonMain.groupBy) consulta += ` GROUP BY ${this.jsonMain.groupBy}`;
+    if (this.jsonMain.orderBy) consulta += ` ORDER BY ${this.jsonMain.orderBy}`;
+
+    consulta += ` LIMIT ${this.limit} OFFSET ${this.limit * this.offset};`;
+    const dataMain: any = await this.obtenerData(consulta);
+
+    this.datosGridMain = [...this.datosGridMain, ...dataMain];
+    this.datosTablaMain = [...this.datosTablaMain, ...dataMain];
+
+    console.log('CAMBIO OFFSET A', this.offset);
+    console.log('Consulta ejecutada:', consulta);
+  }
+
+  ngOnDestroy() {
+    // Eliminar suscripción cuando el componente se destruya
+    if (this.scrollSubscription) {
+      this.scrollSubscription.unsubscribe();
+    }
+  }
 
   async ngOnInit(): Promise<void> {
     const nombreJson = this.route.snapshot.paramMap.get('nombreJson') || '';
-    const jsonMain: any = await this.cargarJson(nombreJson);
+    this.jsonMain = await this.cargarJson(nombreJson);
 
-    this.alternaListadoFormulario = jsonMain.alternaListadoFormulario;
-    const [camposPorFila, grid] = this.generarEstructura(jsonMain);
-    this.generarBotonesFormulario(jsonMain);
-    this.generarBotonesListado(jsonMain);
+    this.alternaListadoFormulario = this.jsonMain.alternaListadoFormulario;
+    const [camposPorFila, grid] = this.generarEstructura(this.jsonMain);
+    this.generarBotonesFormulario(this.jsonMain);
+    this.generarBotonesListado(this.jsonMain);
 
-    console.log('jsonMain', jsonMain);
+    console.log('this.jsonMain', this.jsonMain);
     this.camposMain = camposPorFila;
     this.gridMain = grid; // Guardar el grid principal
     this.datosGridMain = this.datosTablaMain;
@@ -56,34 +128,32 @@ export class JsonComponent implements OnInit {
 
     this.mapeoColumnas = this.generarMapeoColumnas();
 
-    let consulta = `SELECT * FROM ${jsonMain.tabla}`;
+    let consulta = `SELECT * FROM ${this.jsonMain.tabla}`;
 
-    if (jsonMain.groupBy) {
-      consulta += ` GROUP BY ${jsonMain.groupBy}`;
+    if (this.jsonMain.groupBy) {
+      consulta += ` GROUP BY ${this.jsonMain.groupBy}`;
     }
 
-    if (jsonMain.orderBy) {
-      consulta += ` ORDER BY ${jsonMain.orderBy}`;
+    if (this.jsonMain.orderBy) {
+      consulta += ` ORDER BY ${this.jsonMain.orderBy}`;
     }
 
-    consulta += ';';
+    // Agregamos limit y offset con variables
+    consulta += ` LIMIT ${this.limit} OFFSET ${this.limit * this.offset};`;
 
     const dataMain: any = await this.obtenerData(consulta);
 
     this.datosGridMain = dataMain;
-    console.log("datosGridMain",this.datosGridMain)
+    console.log('datosGridMain', this.datosGridMain);
     this.datosTablaMain = dataMain;
 
-    if (jsonMain.alternaListadoFormulario === true) {
-      console.log('alternaListado es true');
+    if (this.jsonMain.alternaListadoFormulario === true) {
       this.mostrarListado = true;
       this.mostrarFormulario = false;
-      console.log('estado Mostrar Listado', this.mostrarListado);
-      console.log('estado Mostrar Formulario', this.mostrarFormulario);
     }
 
-    if (jsonMain.secciones && jsonMain.secciones.length > 0) {
-      for (let seccion of jsonMain.secciones) {
+    if (this.jsonMain.secciones && this.jsonMain.secciones.length > 0) {
+      for (let seccion of this.jsonMain.secciones) {
         if (seccion.alternaListadoFormulario == false) {
           const jsonprueba: any = await this.cargarJson(seccion.origen);
 
@@ -94,18 +164,39 @@ export class JsonComponent implements OnInit {
           this.gridSecciones.push(gridSeccion);
 
           let consulta = `SELECT * FROM ${jsonprueba.tabla}`;
-
           if (jsonprueba.orderBy) {
             consulta += ` ORDER BY ${jsonprueba.orderBy}`;
           }
 
-          const dataSeccion: any = await this.obtenerData(consulta);
+          consulta += ` LIMIT ${this.limitSeccion} OFFSET ${
+            this.limitSeccion * this.offsetSeccion
+          }`;
 
+          consulta += `;`;
+
+          const dataSeccion: any = await this.obtenerData(consulta);
+          console.log('consulta secciones', consulta);
+
+          // Filtramos y asignamos las acciones correspondientes a esta sección
+          let accionesSeccion = [];
+          if (jsonprueba.accionesListado) {
+            accionesSeccion = jsonprueba.accionesListado
+              .filter((accion: any) => accion.tipoGenerico === 'control')
+              .map((accion: any) => ({
+                nombre: accion.nombre,
+                class: accion.class || 'fa fa-button',
+                accion: accion.accion || '',
+                tipoControl: accion.tipoControl || 'i',
+              }));
+          }
+
+          // Agregamos la sección con su propio conjunto de acciones
           this.datosSecciones.push({
             nombre: seccion.nombre,
             campos: Object.values(camposSeccion),
             grid: gridSeccion,
             gridInfo: dataSeccion,
+            acciones: accionesSeccion, // 🔹 Cada sección ahora tiene su propio set de acciones
           });
         }
       }
@@ -656,6 +747,13 @@ export class JsonComponent implements OnInit {
 
   guardarEMP(valor: string) {
     console.log(`guardarEMP ejecutado con valor: ${valor}`);
+  }
+  eliminarEIM(valor: string) {
+    console.log('función eliminar EIM');
+  }
+
+  eliminarEMP(valor: string) {
+    console.log('funcion eliminarEMP');
   }
 
   calcularValorProductoEgreso() {

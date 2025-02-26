@@ -1,3 +1,5 @@
+
+
 /* Contenedor de filas */
 .fila {
   display: flex;
@@ -114,7 +116,6 @@ i {
   color: #007bff;
   cursor: pointer;
 }
-
 .tabla-debug th,
 .tabla-debug td {
   border: 1px solid black; /* Borde de 1px en todas las celdas */
@@ -167,6 +168,10 @@ i {
   position: relative; /* Necesario para que los elementos internos usen "position: absolute" */
 }
 
+.tabla-main-container{
+  height: 50em;
+  overflow-y: auto;
+}
 /* Estilos generales de la tabla */
 .tabla-debug {
   width: 100%; /* Para que la tabla ocupe todo el ancho del contenedor */
@@ -198,3 +203,14 @@ i {
   background-color: white; /* Fondo blanco para diferenciar */
 }
 
+.acciones-separadas {
+  display: flex; /* Alinea los elementos en fila */
+  justify-content: center; /* Centra horizontalmente */
+  align-items: center; /* Centra verticalmente */
+  gap: 10px; /* Espacio entre elementos */
+  padding: 5px; /* Espaciado interno */
+  white-space: nowrap; /* Evita el salto de línea */
+  overflow: hidden; /* Oculta el contenido si se desborda */
+  text-overflow: ellipsis; /* Agrega "..." si el texto se corta */
+  max-width: 100%; /* Evita que se desborde del contenedor */
+}

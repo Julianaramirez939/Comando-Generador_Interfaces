@@ -1,3 +1,4 @@
+
 <div *ngIf="mostrarFormulario">
   <div class="botones-container">
     <button (click)="alternarListado()">Listar</button>
@@ -102,7 +103,7 @@
         </div>
       </fieldset>
       <!-- Tabla debajo de cada sección -->
-      <div class="tabla-container">
+      <div #tablaContainer class="tabla-container">
         <div *ngIf="seccion.grid && seccion.grid.length > 0">
           <table class="tabla-debug filaspares">
             <thead>
@@ -118,13 +119,28 @@
             <tbody>
               <tr
                 *ngFor="let fila of seccion.gridInfo"
-                (click)="seleccionarFilaSeccion(fila, i)"
+                (click)="seleccionarFilaSeccion(fila, i);$event.stopPropagation()"
               >
                 <td
-                  *ngFor="let grupo of seccion.grid"
+                  *ngFor="let grupo of seccion.grid, let j = index"
                   [attr.colspan]="grupo?.opcionesListado?.longitud || 1"
+                  [class.celda-con-acciones]="j === seccion.grid.length - 1"
                 >
                   {{ fila[mapeoSecciones?.[grupo.titulo]] || "" }}
+
+                  <span
+                    *ngIf="
+                      j === seccion.grid.length - 1 && seccion.acciones?.length
+                    "
+                    class="acciones-separadas"
+                  >
+                    <i
+                      *ngFor="let accion of seccion.acciones"
+                      [attr.id]="accion.nombre"
+                      [class]="accion.class"
+                      (click)="ejecutarAccion(accion.accion)"
+                    ></i>
+                  </span>
                 </td>
               </tr>
             </tbody>
@@ -143,7 +159,7 @@
   </div>
 
   <!-- Tabla de campos visibles - parte superior -->
-  <div *ngIf="datos.campos && datos.campos.length > 0">
+  <div  #tablaContainer class="tabla-main-container" *ngIf="datos.campos && datos.campos.length > 0">
     <table class="tabla-debug filaspares">
       <thead>
         <tr>
