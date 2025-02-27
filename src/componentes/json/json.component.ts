@@ -6,6 +6,8 @@ import {
   ChangeDetectorRef,
   ViewChild,
   ElementRef,
+  QueryList,
+  ViewChildren,
 } from '@angular/core';
 import { Campo } from '../../interfaces/campos';
 import { Listado } from '../../interfaces/listado';
@@ -51,20 +53,21 @@ export class JsonComponent implements OnInit {
   ) {}
   jsonMain: any;
   @ViewChild('tablaContainer', { static: false }) tablaContainer!: ElementRef;
-  limit = 40;
-  limitSeccion = 20;
+  @ViewChildren('tablaSeccion') tablasSecciones!: QueryList<ElementRef>;
+  limit = 100;
+  limitSeccion = 50;
 
   offset = 0;
   offsetSeccion = 0;
   scrollSubscription!: Subscription;
+  seccionesSubscriptions: Subscription[] = [];
 
   ngAfterViewInit() {
-    // Esperar un breve momento para asegurarse de que el DOM está listo
+    // 🔹 Scroll para el contenedor principal
     setTimeout(() => {
       if (this.tablaContainer) {
         console.log('📌 tablaContainer encontrado:', this.tablaContainer);
 
-        // Detecta el scroll con RxJS
         this.scrollSubscription = fromEvent(
           this.tablaContainer.nativeElement,
           'scroll'
@@ -80,11 +83,60 @@ export class JsonComponent implements OnInit {
             }
           });
       } else {
-        console.error(
-          '⚠️ No se encontró .tabla-main-container después del timeout'
-        );
+        console.error('⚠️ No se encontró tablaContainer después del timeout');
       }
-    }, 100); // Espera 100ms para asegurar que el DOM cargó completamente
+    }, 800);
+
+    // 🔹 Scroll para cada sección
+    setTimeout(() => {
+      if (this.tablasSecciones) {
+        console.log(`📌 Detectando scroll en sección `);
+        console.log(`tablasSeccionesssss`, this.tablasSecciones);
+
+        // 🔹 Esperar a que los elementos de las secciones estén listos
+        this.tablasSecciones.changes.subscribe(() => {
+          console.log(
+            '📌 Secciones detectadas:',
+            this.tablasSecciones.toArray()
+          );
+
+          this.tablasSecciones.forEach((tablasSecciones, index) => {
+            fromEvent(tablasSecciones.nativeElement, 'scroll')
+              .pipe(throttleTime(300))
+              .subscribe(() => {
+                if (
+                  tablasSecciones.nativeElement.scrollTop +
+                    tablasSecciones.nativeElement.clientHeight >=
+                  tablasSecciones.nativeElement.scrollHeight * 0.9
+                ) {
+                  this.cargarMasDatosSecciones(index);
+                }
+              });
+          });
+        });
+
+        /*
+        this.tablasSecciones.forEach((seccion, index) => {
+
+          const sub = fromEvent(seccion.nativeElement, 'scroll')
+            .pipe(throttleTime(300))
+            .subscribe(() => {
+              if (
+                seccion.nativeElement.scrollTop +
+                  seccion.nativeElement.clientHeight >=
+                seccion.nativeElement.scrollHeight * 0.9
+              ) {
+                console.log(`📌 Sección ${index} alcanzó el 90% del scroll`);
+                this.cargarMasDatosSecciones(index);
+              }
+            });
+
+          this.seccionesSubscriptions.push(sub);
+          });        */
+      } else {
+        console.error('⚠️ No se encontraron las tablas de secciones.');
+      }
+    }, 600);
   }
 
   async cargarMasDatos() {
@@ -103,12 +155,53 @@ export class JsonComponent implements OnInit {
     console.log('CAMBIO OFFSET A', this.offset);
     console.log('Consulta ejecutada:', consulta);
   }
+  async cargarMasDatosSecciones(index: number) {
+    this.offsetSeccion++;
+    if (!this.jsonMain.secciones || !this.jsonMain.secciones[index]) return;
+
+    let seccion = this.jsonMain.secciones[index];
+
+    // Si la sección usa formulario alterno, no cargamos más datos
+    if (seccion.alternaListadoFormulario) return;
+
+    // 🔹 Incrementamos el offset específico de la sección
+    seccion.offsetSeccion = (seccion.offsetSeccion || 0) + 1;
+
+    // 🔹 Cargamos el JSON de la sección
+    const jsonSeccion: any = await this.cargarJson(seccion.origen);
+
+    let consulta = `SELECT * FROM ${jsonSeccion.tabla}`;
+    if (jsonSeccion.orderBy) {
+      consulta += ` ORDER BY ${jsonSeccion.orderBy}`;
+    }
+    consulta += ` LIMIT ${this.limitSeccion} OFFSET ${
+      this.limitSeccion * seccion.offsetSeccion
+    };`;
+
+    const dataSeccion: any = await this.obtenerData(consulta);
+
+    // 🔹 Buscamos la sección dentro de `datosSecciones` y actualizamos `gridInfo`
+    const datosSeccionIndex = this.datosSecciones.findIndex(
+      (s) => s.nombre === seccion.nombre
+    );
+
+    if (datosSeccionIndex !== -1) {
+      this.datosSecciones[datosSeccionIndex].gridInfo = [
+        ...this.datosSecciones[datosSeccionIndex].gridInfo,
+        ...dataSeccion,
+      ];
+    }
+
+    console.log(`📌 Sección ${index} - Consulta ejecutada:`, consulta);
+    console.log('CAMBIO OFFSET A', seccion.offsetSeccion);
+  }
 
   ngOnDestroy() {
     // Eliminar suscripción cuando el componente se destruya
     if (this.scrollSubscription) {
       this.scrollSubscription.unsubscribe();
     }
+    this.seccionesSubscriptions.forEach((sub) => sub.unsubscribe());
   }
 
   async ngOnInit(): Promise<void> {
@@ -198,6 +291,7 @@ export class JsonComponent implements OnInit {
             gridInfo: dataSeccion,
             acciones: accionesSeccion, // 🔹 Cada sección ahora tiene su propio set de acciones
           });
+          console.log('datosSeccionessss', this.datosSecciones);
         }
       }
 

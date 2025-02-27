@@ -103,7 +103,7 @@
         </div>
       </fieldset>
       <!-- Tabla debajo de cada sección -->
-      <div #tablaContainer class="tabla-container">
+      <div  #tablaSeccion id="tabla-seccion-{{i}}" class="tabla-container">
         <div *ngIf="seccion.grid && seccion.grid.length > 0">
           <table class="tabla-debug filaspares">
             <thead>
