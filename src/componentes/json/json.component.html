@@ -1,12 +1,16 @@
-
 <div *ngIf="mostrarFormulario">
   <div class="botones-container">
-    <button (click)="alternarListado()">Listar</button>
+    <button *ngIf="!buscar" (click)="alternarListado()">Listar</button>
     <div *ngFor="let boton of botonesGeneradosFormulario">
-      <button (click)="ejecutarAccion(boton.accion)">{{ boton.nombre }}</button>
+      <button
+        (click)="
+          boton.onClick ? boton.onClick($event) : ejecutarAccion(boton.nombre)
+        "
+      >
+        {{ boton.nombre }}
+      </button>
     </div>
   </div>
-
   <div *ngFor="let fila of camposMain | keyvalue">
     <div class="fila">
       <div *ngFor="let campo of fila.value" class="columna">
@@ -14,15 +18,15 @@
 
         <!-- Si es un botón, renderizamos un ícono -->
         <i
-          [id]="campo.nombre"
+          [id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
           *ngIf="campo.nombre?.toLowerCase().startsWith('boton')"
-          [attr.id]="campo.nombre"
+          [attr.id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
           [class]="campo.class"
           (click)="ejecutarAccion(campo.accion)"
         ></i>
 
         <ng-select
-          [id]="campo.nombre"
+          [id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
           *ngIf="campo.fuente?.tipo === 'array'"
           [(ngModel)]="campo.valorDefecto"
           class="custom-ng-select"
@@ -36,7 +40,7 @@
         </ng-select>
 
         <input
-          [id]="campo.nombre"
+          [id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
           *ngIf="
             campo.fuente?.tipo !== 'array' &&
             !campo.nombre?.toLowerCase().startsWith('boton')
@@ -50,9 +54,10 @@
       </div>
     </div>
   </div>
-  <button (click)="guardarCambios()">Guardar Cambios</button>
+
+  <button (click)="realizarConsulta()">Guardar Cambios</button>
   <!-- Secciones -->
-  <div *ngIf="datosSecciones && datosSecciones.length > 0">
+  <div *ngIf="datosSecciones && datosSecciones.length > 0 && buscar !== true">
     <div *ngFor="let seccion of datosSecciones; let i = index">
       <fieldset>
         <legend>{{ seccion.nombre }}</legend>
@@ -103,7 +108,7 @@
         </div>
       </fieldset>
       <!-- Tabla debajo de cada sección -->
-      <div  #tablaSeccion id="tabla-seccion-{{i}}" class="tabla-container">
+      <div #tablaSeccion id="tabla-seccion-{{ i }}" class="tabla-container">
         <div *ngIf="seccion.grid && seccion.grid.length > 0">
           <table class="tabla-debug filaspares">
             <thead>
@@ -119,10 +124,12 @@
             <tbody>
               <tr
                 *ngFor="let fila of seccion.gridInfo"
-                (click)="seleccionarFilaSeccion(fila, i);$event.stopPropagation()"
+                (click)="
+                  seleccionarFilaSeccion(fila, i); $event.stopPropagation()
+                "
               >
                 <td
-                  *ngFor="let grupo of seccion.grid, let j = index"
+                  *ngFor="let grupo of seccion.grid; let j = index"
                   [attr.colspan]="grupo?.opcionesListado?.longitud || 1"
                   [class.celda-con-acciones]="j === seccion.grid.length - 1"
                 >
@@ -154,12 +161,16 @@
 <div *ngIf="mostrarListado">
   <div class="botones-container">
     <div *ngFor="let boton of botonesGeneradosListado">
-      <button (click)="ejecutarAccion(boton.accion)">{{ boton.nombre }}</button>
+      <button (click)="boton.onClick($event)">{{ boton.nombre }}</button>
     </div>
   </div>
 
   <!-- Tabla de campos visibles - parte superior -->
-  <div  #tablaContainer class="tabla-main-container" *ngIf="datos.campos && datos.campos.length > 0">
+  <div
+    #tablaContainer
+    class="tabla-main-container"
+    *ngIf="datos.campos && datos.campos.length > 0"
+  >
     <table class="tabla-debug filaspares">
       <thead>
         <tr>

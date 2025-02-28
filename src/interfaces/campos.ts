@@ -1,6 +1,7 @@
 export interface Campo {
   titulo: string;
   nombre: string;
+  campoBD: string;
   class: string;
   tipoGenerico: string;
   tipoControl: string;

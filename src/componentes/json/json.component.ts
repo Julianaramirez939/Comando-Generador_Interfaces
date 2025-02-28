@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import {
   Component,
-  NgModule,
   OnInit,
   ChangeDetectorRef,
   ViewChild,
@@ -12,7 +11,7 @@ import {
 import { Campo } from '../../interfaces/campos';
 import { Listado } from '../../interfaces/listado';
 import { HttpClient } from '@angular/common/http';
-import { FormsModule, NgModel } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { ObtenerDataService } from '../../servicios/obtener-data.service';
 import { ActivatedRoute } from '@angular/router';
@@ -44,6 +43,7 @@ export class JsonComponent implements OnInit {
   botonesGeneradosListado: any[] = [];
   accionesListado: any[] = [];
   seccionesData: { [key: string]: { datos: any[]; offset: number } } = {};
+  buscar: boolean = false;
 
   constructor(
     private http: HttpClient,
@@ -55,7 +55,7 @@ export class JsonComponent implements OnInit {
   @ViewChild('tablaContainer', { static: false }) tablaContainer!: ElementRef;
   @ViewChildren('tablaSeccion') tablasSecciones!: QueryList<ElementRef>;
   limit = 100;
-  limitSeccion = 50;
+  limitSeccion = 40;
 
   offset = 0;
   offsetSeccion = 0;
@@ -114,25 +114,6 @@ export class JsonComponent implements OnInit {
               });
           });
         });
-
-        /*
-        this.tablasSecciones.forEach((seccion, index) => {
-
-          const sub = fromEvent(seccion.nativeElement, 'scroll')
-            .pipe(throttleTime(300))
-            .subscribe(() => {
-              if (
-                seccion.nativeElement.scrollTop +
-                  seccion.nativeElement.clientHeight >=
-                seccion.nativeElement.scrollHeight * 0.9
-              ) {
-                console.log(`📌 Sección ${index} alcanzó el 90% del scroll`);
-                this.cargarMasDatosSecciones(index);
-              }
-            });
-
-          this.seccionesSubscriptions.push(sub);
-          });        */
       } else {
         console.error('⚠️ No se encontraron las tablas de secciones.');
       }
@@ -244,59 +225,6 @@ export class JsonComponent implements OnInit {
       this.mostrarListado = true;
       this.mostrarFormulario = false;
     }
-
-    if (this.jsonMain.secciones && this.jsonMain.secciones.length > 0) {
-      for (let seccion of this.jsonMain.secciones) {
-        if (seccion.alternaListadoFormulario == false) {
-          const jsonprueba: any = await this.cargarJson(seccion.origen);
-
-          const [camposPorFilaSeccion, gridSeccion] =
-            this.generarEstructura(jsonprueba);
-          const camposSeccion = camposPorFilaSeccion;
-
-          this.gridSecciones.push(gridSeccion);
-
-          let consulta = `SELECT * FROM ${jsonprueba.tabla}`;
-          if (jsonprueba.orderBy) {
-            consulta += ` ORDER BY ${jsonprueba.orderBy}`;
-          }
-
-          consulta += ` LIMIT ${this.limitSeccion} OFFSET ${
-            this.limitSeccion * this.offsetSeccion
-          }`;
-
-          consulta += `;`;
-
-          const dataSeccion: any = await this.obtenerData(consulta);
-          console.log('consulta secciones', consulta);
-
-          // Filtramos y asignamos las acciones correspondientes a esta sección
-          let accionesSeccion = [];
-          if (jsonprueba.accionesListado) {
-            accionesSeccion = jsonprueba.accionesListado
-              .filter((accion: any) => accion.tipoGenerico === 'control')
-              .map((accion: any) => ({
-                nombre: accion.nombre,
-                class: accion.class || 'fa fa-button',
-                accion: accion.accion || '',
-                tipoControl: accion.tipoControl || 'i',
-              }));
-          }
-
-          // Agregamos la sección con su propio conjunto de acciones
-          this.datosSecciones.push({
-            nombre: seccion.nombre,
-            campos: Object.values(camposSeccion),
-            grid: gridSeccion,
-            gridInfo: dataSeccion,
-            acciones: accionesSeccion, // 🔹 Cada sección ahora tiene su propio set de acciones
-          });
-          console.log('datosSeccionessss', this.datosSecciones);
-        }
-      }
-
-      this.mapeoSecciones = this.generarMapeoSecciones();
-    }
   }
 
   alternarListado() {
@@ -332,11 +260,47 @@ export class JsonComponent implements OnInit {
 
     return mapeo;
   }
-
-  seleccionarFila(fila: any) {
+  async seleccionarFila(fila: any) {
     console.log('Fila seleccionada:', fila);
+    this.datosSecciones = []; // Limpiar secciones para volver a generarlas
 
-    Object.values(this.camposMain).forEach((filaCampos: any) => {
+    // Si la fila es null, vaciar el formulario principal
+    if (fila === null) {
+      Object.values(this.camposMain).forEach((filaCampos: any) => {
+        filaCampos.forEach((campo: any) => {
+          campo.valorDefecto = ''; // Vaciar el valor de cada campo
+        });
+      });
+
+      // 🔹 Mantener las secciones pero con el formulario vacío
+      if (this.jsonMain.secciones && this.jsonMain.secciones.length > 0) {
+        for (let seccion of this.jsonMain.secciones) {
+          // Cargar la estructura de la sección sin datos
+          const jsonprueba: any = await this.cargarJson(seccion.origen);
+          const [camposPorFilaSeccion, gridSeccion] =
+            this.generarEstructura(jsonprueba);
+
+          this.datosSecciones.push({
+            nombre: seccion.nombre,
+            campos: Object.values(camposPorFilaSeccion), // Campos vacíos
+            grid: gridSeccion,
+            gridInfo: null, // Vaciar los datos de la sección
+            acciones: [],
+          });
+        }
+      }
+
+      this.mapeoSecciones = this.generarMapeoSecciones();
+      if (this.alternaListadoFormulario == true) {
+        this.mostrarListado = false;
+        this.mostrarFormulario = true;
+      }
+      this.cdr.detectChanges();
+      return;
+    }
+
+    // 🔹 Si fila no es null, llenar los valores normalmente
+    Object.values(this.camposMain).forEach(async (filaCampos: any) => {
       filaCampos.forEach((campo: any) => {
         const key = this.mapeoColumnas[campo.titulo];
         let valor = fila[key] || fila[campo.nombre];
@@ -345,11 +309,9 @@ export class JsonComponent implements OnInit {
           const fecha = new Date(valor);
 
           if (campo.tipo === 'date') {
-            // Formato "YYYY-MM-DD" para input date
-            valor = fecha.toISOString().split('T')[0];
+            valor = fecha.toISOString().split('T')[0]; // Formato "YYYY-MM-DD"
           } else if (campo.tipo === 'datetime-local') {
-            // Formato "YYYY-MM-DDTHH:mm" para input datetime-local
-            valor = fecha.toISOString().slice(0, 16);
+            valor = fecha.toISOString().slice(0, 16); // Formato "YYYY-MM-DDTHH:mm"
           }
         }
 
@@ -357,9 +319,56 @@ export class JsonComponent implements OnInit {
       });
     });
 
-    // Forzamos la actualización del DOM
+    // 🔹 Recargar las secciones con datos si fila es válida
+    if (this.jsonMain.secciones && this.jsonMain.secciones.length > 0) {
+      for (let seccion of this.jsonMain.secciones) {
+        if (!seccion.alternaListadoFormulario) {
+          const jsonprueba: any = await this.cargarJson(seccion.origen);
+          const [camposPorFilaSeccion, gridSeccion] =
+            this.generarEstructura(jsonprueba);
+
+          this.gridSecciones.push(gridSeccion);
+
+          let consulta = `SELECT * FROM ${jsonprueba.tabla}`;
+          if (jsonprueba.orderBy) {
+            consulta += ` ORDER BY ${jsonprueba.orderBy}`;
+          }
+          consulta += ` LIMIT ${this.limitSeccion} OFFSET ${
+            this.limitSeccion * this.offsetSeccion
+          };`;
+
+          let dataSeccion: any = await this.obtenerData(consulta);
+          console.log('consulta secciones', consulta);
+
+          let accionesSeccion = [];
+          if (jsonprueba.accionesListado) {
+            accionesSeccion = jsonprueba.accionesListado
+              .filter((accion: any) => accion.tipoGenerico === 'control')
+              .map((accion: any) => ({
+                nombre: accion.nombre,
+                class: accion.class || 'fa fa-button',
+                accion: accion.accion || '',
+                tipoControl: accion.tipoControl || 'i',
+              }));
+          }
+
+          this.datosSecciones.push({
+            nombre: seccion.nombre,
+            campos: Object.values(camposPorFilaSeccion),
+            grid: gridSeccion,
+            gridInfo: fila ? dataSeccion : null, // Si fila es null, vaciar datos
+            acciones: accionesSeccion,
+          });
+        }
+      }
+      this.mapeoSecciones = this.generarMapeoSecciones();
+    }
+
+    if (fila == null) this.alternarListado();
+
     this.cdr.detectChanges();
   }
+
   seleccionarFilaSeccion(fila: any, index: number) {
     this.datosSecciones[index].campos.forEach((filaCampo: any) => {
       filaCampo.forEach((campo: any) => {
@@ -382,41 +391,62 @@ export class JsonComponent implements OnInit {
 
     this.cdr.detectChanges();
   }
-
   async generarBotonesFormulario(json: any) {
     let opcionesMenu: any[] = [];
-
+  
     if (
       json?.seccionesBody?.formulario?.construye === true &&
       Array.isArray(json.seccionesBody.formulario.botones)
     ) {
       if (json.seccionesBody.formulario.botones.length === 0) {
         console.log('No existen botones');
-
+  
         let consultaPermisos = `SELECT * FROM aplicacion_permiso WHERE id_aplicacion = ${json.idAplicacion};`;
-
+  
         try {
           // Obtener permisos
           const dataPermisos: any = await this.obtenerData(consultaPermisos);
           console.log('Resultado de la primera consulta:', dataPermisos);
-
+  
           if (dataPermisos.length > 0) {
             const idsPermisos = dataPermisos
               .map((permiso: any) => permiso.id_permiso)
               .join(',');
-
+  
             let consultaBotones = `SELECT * FROM permiso WHERE id IN (${idsPermisos});`;
-
+  
             // Obtener botones desde la base de datos
             const dataBotones: any = await this.obtenerData(consultaBotones);
             console.log('Resultado de la segunda consulta:', dataBotones);
-
+  
+            // Si buscar es true, solo mostrar botones 1 y 2, si no, mostrar todos
+            const botonesFiltrados = this.buscar
+              ? dataBotones.filter((boton: any) => boton.id === 1 || boton.id === 2)
+              : dataBotones;
+  
             // Guardar los botones con su id y nombre original
-            opcionesMenu = dataBotones.map((boton: any) => ({
+            opcionesMenu = botonesFiltrados.map((boton: any) => ({
               id: boton.id,
               nombre: boton.nombre,
+              onClick:
+                boton.id === 2
+                  ? async (event?: Event) => {
+                      if (event) event.stopPropagation();
+                      console.log('Botón Crear presionado → Ejecutando seleccionarFila(null)');
+  
+                      // ✅ Limpia el formulario y secciones
+                      this.buscar = false;
+                      this.mostrarListado = false;
+                      this.mostrarFormulario = true;
+                      this.seleccionarFila(null);
+  
+                      // ✅ Generar nuevamente todos los botones (cuando se presiona "Crear" en modo búsqueda)
+                      this.botonesGeneradosFormulario = await this.generarBotonesFormulario(this.jsonMain);
+                      this.cdr.detectChanges();
+                    }
+                  : undefined,
             }));
-
+  
             this.botonesGeneradosFormulario = opcionesMenu;
             console.log('Botones generados:', this.botonesGeneradosFormulario);
           }
@@ -424,49 +454,60 @@ export class JsonComponent implements OnInit {
           console.error('Error al obtener los botones:', error);
         }
       } else {
-        console.log(
-          'Existen botones en JSON:',
-          json.seccionesBody.formulario.botones
-        );
-
+        console.log('Existen botones en JSON:', json.seccionesBody.formulario.botones);
+  
         let consultaBotones = `SELECT * FROM permiso;`;
-
+  
         try {
           const dataBotones: any = await this.obtenerData(consultaBotones);
           console.log('Botones obtenidos de la base de datos:', dataBotones);
-
+  
           // Crear un mapa de botones de la base de datos por ID
           const botonesDB = new Map(
             dataBotones.map((boton: any) => [boton.id.toString(), boton])
           );
-
-          opcionesMenu = json.seccionesBody.formulario.botones.map(
-            (botonStr: string) => {
+  
+          opcionesMenu = json.seccionesBody.formulario.botones
+            .map((botonStr: string) => {
               const partes = botonStr.split('|'); // Separar por "|"
               const id = partes[0];
-
+  
               if (botonesDB.has(id)) {
                 const botonDB = botonesDB.get(id) as {
                   id: number;
                   nombre: string;
-                }; // ✅ Solución
-
+                };
+  
                 return {
                   id: parseInt(id),
                   nombre: partes[1] || botonDB.nombre, // Si no tiene nombre en JSON, usa el de la BD
                   accion:
-                    partes[2] ||
-                    `console.log('Ejecutando acción para ${botonDB.nombre}');`,
+                    partes[2] || `console.log('Ejecutando acción para ${botonDB.nombre}');`,
+                  onClick:
+                    botonDB.id === 2
+                      ? async (event?: Event) => {
+                          if (event) event.stopPropagation();
+                          console.log('Botón Crear presionado → Ejecutando seleccionarFila(null)');
+  
+                          // ✅ Limpia el formulario y secciones
+                          this.buscar = false;
+                          this.mostrarListado = false;
+                          this.mostrarFormulario = true;
+                          this.seleccionarFila(null);
+  
+                          // ✅ Generar nuevamente todos los botones (cuando se presiona "Crear" en modo búsqueda)
+                          this.botonesGeneradosFormulario = await this.generarBotonesFormulario(this.jsonMain);
+                          this.cdr.detectChanges();
+                        }
+                      : undefined,
                 };
               } else {
-                console.warn(
-                  `Botón con ID ${id} no encontrado en la base de datos`
-                );
+                console.warn(`Botón con ID ${id} no encontrado en la base de datos`);
                 return { id: parseInt(id), nombre: `Opción ${id}` };
               }
-            }
-          );
-
+            })
+            .filter((boton: any) => !this.buscar || boton.id === 1 || boton.id === 2); // ✅ Filtra los botones si buscar es true
+  
           this.botonesGeneradosFormulario = opcionesMenu;
           console.log('Botones generados:', this.botonesGeneradosFormulario);
         } catch (error) {
@@ -474,9 +515,10 @@ export class JsonComponent implements OnInit {
         }
       }
     }
-
+  
     return opcionesMenu;
   }
+  
   async generarBotonesListado(json: any) {
     let opcionesMenu: any[] = [];
 
@@ -492,7 +534,7 @@ export class JsonComponent implements OnInit {
         let consultaPermisos = `SELECT * FROM aplicacion_permiso WHERE id_aplicacion = ${json.idAplicacion};`;
 
         try {
-          // Obtener permisos
+          // 🔹 Obtener permisos
           const dataPermisos: any = await this.obtenerData(consultaPermisos);
           console.log(
             'Resultado de la primera consulta (LISTADO):',
@@ -506,18 +548,75 @@ export class JsonComponent implements OnInit {
 
             let consultaBotones = `SELECT * FROM permiso WHERE id IN (${idsPermisos});`;
 
-            // Obtener botones desde la base de datos
+            // 🔹 Obtener botones desde la base de datos
             const dataBotones: any = await this.obtenerData(consultaBotones);
             console.log(
               'Resultado de la segunda consulta (LISTADO):',
               dataBotones
             );
 
-            // Guardar los botones con su id y nombre original
-            opcionesMenu = dataBotones.map((boton: any) => ({
+            // 🔹 Agregar evento `onClick` a cada botón
+            let botonesConEventos = dataBotones.map((boton: any) => ({
               id: boton.id,
               nombre: boton.nombre,
+              onClick: (event?: Event) => {
+                if (event) event.stopPropagation(); // 🟢 Evita que otro evento se ejecute
+                console.log(`Botón presionado: ${boton.nombre}`);
+                this.ejecutarAccion(boton.nombre); // Llama la acción correspondiente
+              },
             }));
+
+            // 🔹 Buscar botón con `id: 2` (Crear)
+            const botonCrear = botonesConEventos.find((b: any) => b.id === 2);
+
+            // 🔹 Crear botón de búsqueda
+            const botonBuscar = {
+              id: 99,
+              nombre: 'Buscar',
+              onClick: async (event?: Event) => {
+                if (event) event.stopPropagation();
+                console.log('Botón Buscar presionado');
+
+                this.buscar = true; // 🔹 Cambia el estado de búsqueda
+
+                // 🔹 Si jsonMain.alternaListadoFormulario es true, alternamos el formulario
+                if (this.jsonMain.alternaListadoFormulario === true) {
+                  this.mostrarListado = false;
+                  this.mostrarFormulario = true;
+                }
+
+                // 🔹 Vaciar todos los valores del formulario principal
+                Object.values(this.camposMain).forEach((filaCampos: any) => {
+                  filaCampos.forEach((campo: any) => {
+                    campo.valorDefecto = ''; // Limpiar cada campo
+                  });
+                });
+
+                // 🔹 Vaciar también las secciones
+                this.datosSecciones = [];
+
+                // 🔹 Regenerar los botones del formulario con la nueva condición
+                this.botonesGeneradosFormulario =
+                  await this.generarBotonesFormulario(this.jsonMain);
+
+                this.cdr.detectChanges(); // 🔄 Forzar actualización en la vista
+              },
+            };
+
+            // 🔹 Si existe el botón con ID 2, solo mostrar "Crear" y "Buscar"
+            if (botonCrear) {
+              botonCrear.onClick = (event?: Event) => {
+                if (event) event.stopPropagation();
+                console.log(
+                  'Botón Crear presionado → Ejecutando seleccionarFila(null)'
+                );
+                this.seleccionarFila(null);
+              };
+              opcionesMenu = [botonCrear, botonBuscar];
+            } else {
+              // 🔹 Si NO existe el botón con ID 2, mostrar todos los botones
+              opcionesMenu = [...botonesConEventos, botonBuscar];
+            }
 
             this.botonesGeneradosListado = opcionesMenu;
             console.log(
@@ -598,6 +697,7 @@ export class JsonComponent implements OnInit {
             titulo: campo.titulo,
             tipo: inputType,
             nombre: campo.nombre,
+            campoBD: campo.campoBD,
             maxLength:
               inputType === 'text' || inputType === 'number'
                 ? maxLength
@@ -738,37 +838,99 @@ export class JsonComponent implements OnInit {
 
     return json;
   }
-  guardarCambios() {
-    const cambiosGuardados: { [key: string]: any } = {};
-
-    for (const fila of Object.values(this.camposMain)) {
-      for (const campo of fila) {
-        if (campo.nombre) {
-          if (campo && campo.fuente?.tipo !== 'array') {
-            const elemento = document.getElementById(
-              campo.nombre
-            ) as HTMLInputElement;
-            let valor = elemento.value;
-
-            if (campo.tipo == 'datetime-local') {
-              valor = this.formatearFecha(valor);
-            }
-
-            cambiosGuardados[campo.nombre] = valor;
-          } else {
-            console.log('Entrando a estado para el campo select...');
-            const elemento = document.getElementById(
-              campo.nombre
-            ) as HTMLSelectElement;
-            cambiosGuardados[campo.nombre] = campo.valorDefecto;
+  async realizarConsulta() {
+    try {
+      const cambiosGuardados: { [key: string]: any } = {};
+  
+      // ✅ Verificar que this.camposMain esté definido
+      if (!this.camposMain) {
+        console.error('Error: this.camposMain no está definido.');
+        return;
+      }
+  
+      console.log('📌 Verificando camposMain:', this.camposMain);
+  
+      // 🔹 Crear el mapeo de nombres de campos
+      const mapeoCampos: { [key: string]: string } = {};
+  
+      // Recorrer los campos para construir el mapeo
+      for (const fila of Object.values(this.camposMain)) {
+        for (const campo of fila) {
+          if (campo.nombre && campo.campoBD) {
+            mapeoCampos[campo.nombre] = campo.campoBD;
           }
         }
       }
+  
+      console.log('🔄 Mapeo de nombres de campos:', mapeoCampos);
+  
+      // Recorrer los campos del formulario para capturar valores
+      for (const fila of Object.values(this.camposMain)) {
+        for (const campo of fila) {
+          // ✅ Verificar que el campo está en el mapeo
+          if (!campo.nombre || !mapeoCampos[campo.nombre]) {
+            console.warn(`⚠️ Advertencia: No se encontró campoBD para ${campo.nombre}`);
+            continue;
+          }
+  
+          const nombreBD = mapeoCampos[campo.nombre]; // 🔹 Se obtiene el nombre mapeado
+          let valor = '';
+  
+          // ✅ Obtener el input en el DOM
+          const elemento = document.getElementById(campo.nombre) as HTMLInputElement | HTMLSelectElement;
+  
+          if (!elemento) {
+            console.warn(`⚠️ No se encontró un input/select con ID: ${campo.nombre}`);
+            continue;
+          }
+  
+          console.log(`📌 Procesando campo: ${campo.nombre} → ${nombreBD}`, elemento);
+  
+          if (campo.fuente?.tipo !== 'array') {
+            // ✅ Para inputs de texto, number, date, etc.
+            valor = elemento.value?.trim() || '';
+            console.log(`✅ Valor capturado de input: ${valor}`);
+          } else {
+            // ✅ Para selects
+            valor = (elemento as HTMLSelectElement).value || '';
+            console.log(`✅ Valor capturado de select: ${valor}`);
+          }
+  
+          // Solo agregar si el campo tiene un valor
+          if (valor) {
+            cambiosGuardados[nombreBD] = valor; // 🔹 Se usa el campo de BD
+          }
+        }
+      }
+  
+      console.log('📝 Datos capturados:', cambiosGuardados);
+  
+      // ✅ Verificar si hay datos antes de hacer la consulta
+      if (Object.keys(cambiosGuardados).length === 0) {
+        console.warn('⚠️ No hay datos para consultar.');
+        return;
+      }
+  
+      // Construcción de las condiciones WHERE dinámicas
+      const condiciones = Object.entries(cambiosGuardados)
+        .map(([campoBD, valor]) => `${campoBD} = '${valor}'`) // 🔹 Se usa el campoBD
+        .join(' AND ');
+  
+      // Construcción final de la consulta
+      const consulta = `SELECT * FROM ${this.jsonMain.tabla} WHERE ${condiciones};`;
+  
+      console.log('🔍 Consulta generada:', consulta);
+  
+      // Ejecutar la consulta en la base de datos
+      const resultado = await this.obtenerData(consulta);
+  
+      console.log('📊 Resultado de la consulta:', resultado);
+    } catch (error) {
+      console.error('❌ Error al realizar la consulta:', error);
     }
-
-    console.log('Cambios guardados:', cambiosGuardados);
   }
-
+  
+  
   formatearFecha(fecha: string): string {
     const date = new Date(fecha);
 
