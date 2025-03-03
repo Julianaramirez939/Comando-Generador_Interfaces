@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import Swal from 'sweetalert2'; // ✅ Importa SweetAlert2
 import {
   Component,
   OnInit,
@@ -131,6 +132,7 @@ export class JsonComponent implements OnInit {
     const dataMain: any = await this.obtenerData(consulta);
 
     this.datosGridMain = [...this.datosGridMain, ...dataMain];
+
     this.datosTablaMain = [...this.datosTablaMain, ...dataMain];
 
     console.log('CAMBIO OFFSET A', this.offset);
@@ -227,12 +229,19 @@ export class JsonComponent implements OnInit {
     }
   }
 
-  alternarListado() {
+  async alternarListado() {
     if (this.alternaListadoFormulario == true) {
       this.mostrarListado = !this.mostrarListado;
       this.mostrarFormulario = !this.mostrarFormulario;
+
+      // Si se activa el listado, ejecutar la consulta
+      if (this.mostrarListado) {
+        await this.cargarMasDatos();
+        this.ngAfterViewInit();
+      }
     }
   }
+
   generarMapeoColumnas(): any {
     const mapeo: any = {};
     Object.values(this.gridMain).forEach((elemento: any) => {
@@ -268,7 +277,20 @@ export class JsonComponent implements OnInit {
     if (fila === null) {
       Object.values(this.camposMain).forEach((filaCampos: any) => {
         filaCampos.forEach((campo: any) => {
-          campo.valorDefecto = ''; // Vaciar el valor de cada campo
+          if (
+            campo.fuente?.tipo === 'array' &&
+            Array.isArray(campo.fuente.array)
+          ) {
+            // Buscar si hay un valor por defecto en el array de opciones
+            const opcionPorDefecto =
+              campo.fuente.array.find((op: any) => op.porDefecto) ||
+              campo.fuente.array[0];
+            campo.valorDefecto = opcionPorDefecto
+              ? opcionPorDefecto.clave
+              : null;
+          } else {
+            campo.valorDefecto = ''; // Limpiar el resto de los campos
+          }
         });
       });
 
@@ -393,60 +415,85 @@ export class JsonComponent implements OnInit {
   }
   async generarBotonesFormulario(json: any) {
     let opcionesMenu: any[] = [];
-  
+
     if (
       json?.seccionesBody?.formulario?.construye === true &&
       Array.isArray(json.seccionesBody.formulario.botones)
     ) {
       if (json.seccionesBody.formulario.botones.length === 0) {
         console.log('No existen botones');
-  
+
         let consultaPermisos = `SELECT * FROM aplicacion_permiso WHERE id_aplicacion = ${json.idAplicacion};`;
-  
+
         try {
           // Obtener permisos
           const dataPermisos: any = await this.obtenerData(consultaPermisos);
           console.log('Resultado de la primera consulta:', dataPermisos);
-  
+
           if (dataPermisos.length > 0) {
             const idsPermisos = dataPermisos
               .map((permiso: any) => permiso.id_permiso)
               .join(',');
-  
+
             let consultaBotones = `SELECT * FROM permiso WHERE id IN (${idsPermisos});`;
-  
+
             // Obtener botones desde la base de datos
             const dataBotones: any = await this.obtenerData(consultaBotones);
             console.log('Resultado de la segunda consulta:', dataBotones);
-  
+
             // Si buscar es true, solo mostrar botones 1 y 2, si no, mostrar todos
             const botonesFiltrados = this.buscar
-              ? dataBotones.filter((boton: any) => boton.id === 1 || boton.id === 2)
+              ? dataBotones.filter(
+                  (boton: any) => boton.id === 1 || boton.id === 2
+                )
               : dataBotones;
-  
+
             // Guardar los botones con su id y nombre original
             opcionesMenu = botonesFiltrados.map((boton: any) => ({
               id: boton.id,
               nombre: boton.nombre,
               onClick:
-                boton.id === 2
+                boton.id === 1
                   ? async (event?: Event) => {
                       if (event) event.stopPropagation();
-                      console.log('Botón Crear presionado → Ejecutando seleccionarFila(null)');
-  
+                      console.log(
+                        '🔍 Botón Buscar presionado → Ejecutando consulta'
+                      );
+
+                      // ✅ Ejecutar la consulta y obtener los datos
+                      await this.realizarConsulta();
+
+                      // ✅ Validar si `datosGridMain` tiene registros
+                      if (this.datosGridMain && this.datosGridMain.length > 0) {
+                        this.mostrarListado = true; // ✅ Mostrar tabla
+                        this.mostrarFormulario = false; // ✅ Asegurar que el formulario esté oculto
+                      } else {
+                        this.mostrarListado = false; // ❌ Ocultar tabla si no hay datos
+                      }
+
+                      this.cdr.detectChanges();
+                    }
+                  : boton.id === 2
+                  ? async (event?: Event) => {
+                      if (event) event.stopPropagation();
+                      console.log(
+                        '📝 Botón Crear presionado → Ejecutando seleccionarFila(null)'
+                      );
+
                       // ✅ Limpia el formulario y secciones
                       this.buscar = false;
                       this.mostrarListado = false;
                       this.mostrarFormulario = true;
                       this.seleccionarFila(null);
-  
-                      // ✅ Generar nuevamente todos los botones (cuando se presiona "Crear" en modo búsqueda)
-                      this.botonesGeneradosFormulario = await this.generarBotonesFormulario(this.jsonMain);
+
+                      // ✅ Regenerar los botones en modo "Crear"
+                      this.botonesGeneradosFormulario =
+                        await this.generarBotonesFormulario(this.jsonMain);
                       this.cdr.detectChanges();
                     }
                   : undefined,
             }));
-  
+
             this.botonesGeneradosFormulario = opcionesMenu;
             console.log('Botones generados:', this.botonesGeneradosFormulario);
           }
@@ -454,60 +501,84 @@ export class JsonComponent implements OnInit {
           console.error('Error al obtener los botones:', error);
         }
       } else {
-        console.log('Existen botones en JSON:', json.seccionesBody.formulario.botones);
-  
+        console.log(
+          'Existen botones en JSON:',
+          json.seccionesBody.formulario.botones
+        );
+
         let consultaBotones = `SELECT * FROM permiso;`;
-  
+
         try {
           const dataBotones: any = await this.obtenerData(consultaBotones);
           console.log('Botones obtenidos de la base de datos:', dataBotones);
-  
+
           // Crear un mapa de botones de la base de datos por ID
           const botonesDB = new Map(
             dataBotones.map((boton: any) => [boton.id.toString(), boton])
           );
-  
+
           opcionesMenu = json.seccionesBody.formulario.botones
             .map((botonStr: string) => {
               const partes = botonStr.split('|'); // Separar por "|"
               const id = partes[0];
-  
+
               if (botonesDB.has(id)) {
                 const botonDB = botonesDB.get(id) as {
                   id: number;
                   nombre: string;
                 };
-  
+
                 return {
                   id: parseInt(id),
                   nombre: partes[1] || botonDB.nombre, // Si no tiene nombre en JSON, usa el de la BD
                   accion:
-                    partes[2] || `console.log('Ejecutando acción para ${botonDB.nombre}');`,
+                    partes[2] ||
+                    `console.log('Ejecutando acción para ${botonDB.nombre}');`,
                   onClick:
-                    botonDB.id === 2
+                    botonDB.id === 1
                       ? async (event?: Event) => {
                           if (event) event.stopPropagation();
-                          console.log('Botón Crear presionado → Ejecutando seleccionarFila(null)');
-  
+                          console.log(
+                            'Botón Buscar presionado → Ejecutando realizarConsulta()'
+                          );
+                          await this.realizarConsulta();
+
+                          // ✅ Mostrar la tabla y ocultar el formulario al buscar
+                          this.mostrarListado = true;
+                          this.mostrarFormulario = false;
+                          this.cdr.detectChanges();
+                        }
+                      : botonDB.id === 2
+                      ? async (event?: Event) => {
+                          if (event) event.stopPropagation();
+                          console.log(
+                            'Botón Crear presionado → Ejecutando seleccionarFila(null)'
+                          );
+
                           // ✅ Limpia el formulario y secciones
                           this.buscar = false;
                           this.mostrarListado = false;
                           this.mostrarFormulario = true;
                           this.seleccionarFila(null);
-  
+
                           // ✅ Generar nuevamente todos los botones (cuando se presiona "Crear" en modo búsqueda)
-                          this.botonesGeneradosFormulario = await this.generarBotonesFormulario(this.jsonMain);
+                          this.botonesGeneradosFormulario =
+                            await this.generarBotonesFormulario(this.jsonMain);
                           this.cdr.detectChanges();
                         }
                       : undefined,
                 };
               } else {
-                console.warn(`Botón con ID ${id} no encontrado en la base de datos`);
+                console.warn(
+                  `Botón con ID ${id} no encontrado en la base de datos`
+                );
                 return { id: parseInt(id), nombre: `Opción ${id}` };
               }
             })
-            .filter((boton: any) => !this.buscar || boton.id === 1 || boton.id === 2); // ✅ Filtra los botones si buscar es true
-  
+            .filter(
+              (boton: any) => !this.buscar || boton.id === 1 || boton.id === 2
+            ); // ✅ Filtra los botones si buscar es true
+
           this.botonesGeneradosFormulario = opcionesMenu;
           console.log('Botones generados:', this.botonesGeneradosFormulario);
         } catch (error) {
@@ -515,10 +586,10 @@ export class JsonComponent implements OnInit {
         }
       }
     }
-  
+
     return opcionesMenu;
   }
-  
+
   async generarBotonesListado(json: any) {
     let opcionesMenu: any[] = [];
 
@@ -570,6 +641,7 @@ export class JsonComponent implements OnInit {
             const botonCrear = botonesConEventos.find((b: any) => b.id === 2);
 
             // 🔹 Crear botón de búsqueda
+            // 🔹 Crear botón de búsqueda
             const botonBuscar = {
               id: 99,
               nombre: 'Buscar',
@@ -588,12 +660,29 @@ export class JsonComponent implements OnInit {
                 // 🔹 Vaciar todos los valores del formulario principal
                 Object.values(this.camposMain).forEach((filaCampos: any) => {
                   filaCampos.forEach((campo: any) => {
-                    campo.valorDefecto = ''; // Limpiar cada campo
+                    if (
+                      campo.fuente?.tipo === 'array' &&
+                      Array.isArray(campo.fuente.array)
+                    ) {
+                      // ✅ Si es un <ng-select>, restaurar su `valorDefecto`
+                      const opcionPorDefecto =
+                        campo.fuente.array.find((op: any) => op.porDefecto) ||
+                        campo.fuente.array[0];
+                      campo.valor = opcionPorDefecto
+                        ? opcionPorDefecto.clave
+                        : null;
+                    } else {
+                      // ❌ Para los demás campos, limpiarlos completamente
+                      campo.valor = '';
+                    }
                   });
                 });
 
-                // 🔹 Vaciar también las secciones
+                // 🔹 Vaciar también las secciones y resetear su estructura
                 this.datosSecciones = [];
+
+                // 🔹 Regenerar la estructura del formulario con campos vacíos
+                await this.seleccionarFila(null);
 
                 // 🔹 Regenerar los botones del formulario con la nueva condición
                 this.botonesGeneradosFormulario =
@@ -838,22 +927,21 @@ export class JsonComponent implements OnInit {
 
     return json;
   }
+
   async realizarConsulta() {
     try {
       const cambiosGuardados: { [key: string]: any } = {};
-  
-      // ✅ Verificar que this.camposMain esté definido
+
       if (!this.camposMain) {
-        console.error('Error: this.camposMain no está definido.');
+        console.error('❌ Error: this.camposMain no está definido.');
         return;
       }
-  
+
       console.log('📌 Verificando camposMain:', this.camposMain);
-  
-      // 🔹 Crear el mapeo de nombres de campos
+
       const mapeoCampos: { [key: string]: string } = {};
-  
-      // Recorrer los campos para construir el mapeo
+
+      // 🔹 Crear mapeo de nombres de campos
       for (const fila of Object.values(this.camposMain)) {
         for (const campo of fila) {
           if (campo.nombre && campo.campoBD) {
@@ -861,76 +949,111 @@ export class JsonComponent implements OnInit {
           }
         }
       }
-  
+
       console.log('🔄 Mapeo de nombres de campos:', mapeoCampos);
-  
-      // Recorrer los campos del formulario para capturar valores
+
+      // 🔹 Capturar valores de los campos
       for (const fila of Object.values(this.camposMain)) {
         for (const campo of fila) {
-          // ✅ Verificar que el campo está en el mapeo
           if (!campo.nombre || !mapeoCampos[campo.nombre]) {
-            console.warn(`⚠️ Advertencia: No se encontró campoBD para ${campo.nombre}`);
+            console.warn(`⚠️ No se encontró campoBD para ${campo.nombre}`);
             continue;
           }
-  
-          const nombreBD = mapeoCampos[campo.nombre]; // 🔹 Se obtiene el nombre mapeado
+
+          const nombreBD = mapeoCampos[campo.nombre];
           let valor = '';
-  
-          // ✅ Obtener el input en el DOM
-          const elemento = document.getElementById(campo.nombre) as HTMLInputElement | HTMLSelectElement;
-  
-          if (!elemento) {
-            console.warn(`⚠️ No se encontró un input/select con ID: ${campo.nombre}`);
-            continue;
-          }
-  
-          console.log(`📌 Procesando campo: ${campo.nombre} → ${nombreBD}`, elemento);
-  
-          if (campo.fuente?.tipo !== 'array') {
-            // ✅ Para inputs de texto, number, date, etc.
-            valor = elemento.value?.trim() || '';
-            console.log(`✅ Valor capturado de input: ${valor}`);
+
+          // 🔹 Si es un ng-select, obtenemos el valor desde campo.valorDefecto
+          if (campo.fuente?.tipo === 'array') {
+            valor = campo.valorDefecto || ''; // ✅ Obtener el valor directamente del modelo
+            console.log(`✅ Valor capturado de ng-select: ${valor}`);
           } else {
-            // ✅ Para selects
-            valor = (elemento as HTMLSelectElement).value || '';
-            console.log(`✅ Valor capturado de select: ${valor}`);
+            // 🔹 Para otros tipos de inputs (input, select)
+            const idCampo = `${campo.nombre}_consulta`;
+            const elemento = document.getElementById(idCampo) as
+              | HTMLInputElement
+              | HTMLSelectElement;
+
+            if (!elemento) {
+              console.warn(
+                `⚠️ No se encontró un input/select con ID: ${idCampo}`
+              );
+              continue;
+            }
+
+            if (
+              elemento instanceof HTMLInputElement ||
+              elemento instanceof HTMLSelectElement
+            ) {
+              valor = elemento.value?.trim() || '';
+              console.log(`✅ Valor capturado de input/select: ${valor}`);
+            }
           }
-  
-          // Solo agregar si el campo tiene un valor
+
+          // 🔹 Guardar el valor si existe
           if (valor) {
-            cambiosGuardados[nombreBD] = valor; // 🔹 Se usa el campo de BD
+            cambiosGuardados[nombreBD] = valor;
           }
         }
       }
-  
+
       console.log('📝 Datos capturados:', cambiosGuardados);
-  
-      // ✅ Verificar si hay datos antes de hacer la consulta
+
       if (Object.keys(cambiosGuardados).length === 0) {
         console.warn('⚠️ No hay datos para consultar.');
+        this.mostrarListado = false; // ❌ No mostrar tabla si no hay filtros
+        this.datosGridMain = [];
+        this.cdr.detectChanges();
         return;
       }
-  
-      // Construcción de las condiciones WHERE dinámicas
+
       const condiciones = Object.entries(cambiosGuardados)
-        .map(([campoBD, valor]) => `${campoBD} = '${valor}'`) // 🔹 Se usa el campoBD
+        .map(([campoBD, valor]) => `${campoBD} = '${valor}'`)
         .join(' AND ');
-  
-      // Construcción final de la consulta
+
       const consulta = `SELECT * FROM ${this.jsonMain.tabla} WHERE ${condiciones};`;
-  
+
       console.log('🔍 Consulta generada:', consulta);
-  
-      // Ejecutar la consulta en la base de datos
+
       const resultado = await this.obtenerData(consulta);
-  
+
       console.log('📊 Resultado de la consulta:', resultado);
+
+      // ✅ Guardar los resultados en `datosGridMain`
+      this.datosGridMain = resultado;
+
+      // ✅ Validar si hay datos antes de mostrar la tabla
+      if (!resultado || resultado.length === 0) {
+        console.warn('⚠️ No se encontraron registros.');
+        this.mostrarListado = false; // ❌ Ocultar tabla si no hay datos
+
+        Swal.fire({
+          icon: 'warning',
+          title: 'Sin registros',
+          confirmButtonText: 'OK',
+        });
+      } else {
+        this.mostrarListado = true; // ✅ Mostrar tabla si hay datos
+      }
+
+      this.cdr.detectChanges();
     } catch (error) {
       console.error('❌ Error al realizar la consulta:', error);
+
+      // ✅ Mostrar alerta de error
+      Swal.fire({
+        icon: 'error',
+        title: 'Error en la consulta',
+        text: 'Ocurrió un error al procesar la solicitud.',
+        confirmButtonText: 'Aceptar',
+      });
+
+      this.mostrarListado = false;
+      this.datosGridMain = [];
+      this.cdr.detectChanges();
     }
   }
-  
-  
+
   formatearFecha(fecha: string): string {
     const date = new Date(fecha);
 
