@@ -385,7 +385,7 @@ export class JsonComponent implements OnInit {
       }
       this.mapeoSecciones = this.generarMapeoSecciones();
     }
-
+    this.buscar = false;
     if (fila == null) this.alternarListado();
 
     this.cdr.detectChanges();
@@ -416,174 +416,110 @@ export class JsonComponent implements OnInit {
   async generarBotonesFormulario(json: any) {
     let opcionesMenu: any[] = [];
 
+    // 🔹 Limpiar los botones antes de regenerarlos
+    this.botonesGeneradosFormulario = [];
+
     if (
       json?.seccionesBody?.formulario?.construye === true &&
       Array.isArray(json.seccionesBody.formulario.botones)
     ) {
       if (json.seccionesBody.formulario.botones.length === 0) {
-        console.log('No existen botones');
+        console.log(
+          'No existen botones en FORMULARIO. Consultando base de datos...'
+        );
 
         let consultaPermisos = `SELECT * FROM aplicacion_permiso WHERE id_aplicacion = ${json.idAplicacion};`;
 
         try {
-          // Obtener permisos
           const dataPermisos: any = await this.obtenerData(consultaPermisos);
-          console.log('Resultado de la primera consulta:', dataPermisos);
+          console.log(
+            'Resultado de la primera consulta (FORMULARIO):',
+            dataPermisos
+          );
 
           if (dataPermisos.length > 0) {
             const idsPermisos = dataPermisos
               .map((permiso: any) => permiso.id_permiso)
               .join(',');
-
             let consultaBotones = `SELECT * FROM permiso WHERE id IN (${idsPermisos});`;
 
-            // Obtener botones desde la base de datos
             const dataBotones: any = await this.obtenerData(consultaBotones);
-            console.log('Resultado de la segunda consulta:', dataBotones);
+            console.log(
+              'Resultado de la segunda consulta (FORMULARIO):',
+              dataBotones
+            );
 
-            // Si buscar es true, solo mostrar botones 1 y 2, si no, mostrar todos
-            const botonesFiltrados = this.buscar
-              ? dataBotones.filter(
-                  (boton: any) => boton.id === 1 || boton.id === 2
-                )
-              : dataBotones;
+            let botonesFiltrados;
+            if (this.buscar) {
+              botonesFiltrados = dataBotones.filter(
+                (boton: any) => boton.id === 1 || boton.id === 2
+              );
+            } else {
+              botonesFiltrados = dataBotones.filter(
+                (boton: any) => boton.id !== 1
+              );
+            }
 
-            // Guardar los botones con su id y nombre original
             opcionesMenu = botonesFiltrados.map((boton: any) => ({
               id: boton.id,
-              nombre: boton.nombre,
-              onClick:
-                boton.id === 1
-                  ? async (event?: Event) => {
-                      if (event) event.stopPropagation();
-                      console.log(
-                        '🔍 Botón Buscar presionado → Ejecutando consulta'
-                      );
+              nombre: boton.id === 2 ? 'Nuevo' : boton.nombre,
+              onClick: async (event?: Event) => {
+                if (event) event.stopPropagation();
 
-                      // ✅ Ejecutar la consulta y obtener los datos
-                      await this.realizarConsulta();
+                if (boton.id === 1) {
+                  // Botón "Consultar"
+                  console.log(
+                    '🔍 Botón Consultar presionado → Ejecutando consulta'
+                  );
+                  await this.realizarConsulta();
 
-                      // ✅ Validar si `datosGridMain` tiene registros
-                      if (this.datosGridMain && this.datosGridMain.length > 0) {
-                        this.mostrarListado = true; // ✅ Mostrar tabla
-                        this.mostrarFormulario = false; // ✅ Asegurar que el formulario esté oculto
-                      } else {
-                        this.mostrarListado = false; // ❌ Ocultar tabla si no hay datos
-                      }
+                  // 🔹 Si no hay registros, no cambiar la vista
+                  if (!this.datosGridMain || this.datosGridMain.length === 0) {
+                    console.log(
+                      '⚠️ No se encontraron registros. Manteniendo la vista actual.'
+                    );
+                    return;
+                  }
 
-                      this.cdr.detectChanges();
-                    }
-                  : boton.id === 2
-                  ? async (event?: Event) => {
-                      if (event) event.stopPropagation();
-                      console.log(
-                        '📝 Botón Crear presionado → Ejecutando seleccionarFila(null)'
-                      );
+                  // 🔹 Si hay registros, alternar entre listado y formulario
+                  this.mostrarListado = true;
+                  this.mostrarFormulario = false;
+                  this.buscar = false;
 
-                      // ✅ Limpia el formulario y secciones
-                      this.buscar = false;
-                      this.mostrarListado = false;
-                      this.mostrarFormulario = true;
-                      this.seleccionarFila(null);
+                  this.botonesGeneradosFormulario =
+                    await this.generarBotonesFormulario(this.jsonMain);
+                  this.cdr.detectChanges();
+                } else if (boton.id === 2) {
+                  // Botón "Nuevo"
+                  console.log(
+                    '📝 Botón Nuevo presionado → Cargando formulario'
+                  );
+                  this.buscar = false;
+                  this.mostrarListado = false;
+                  this.mostrarFormulario = true;
 
-                      // ✅ Regenerar los botones en modo "Crear"
-                      this.botonesGeneradosFormulario =
-                        await this.generarBotonesFormulario(this.jsonMain);
-                      this.cdr.detectChanges();
-                    }
-                  : undefined,
+                  this.datosSecciones = [];
+                  await this.seleccionarFila(null);
+
+                  // Regenerar los botones del formulario
+                  this.botonesGeneradosFormulario =
+                    await this.generarBotonesFormulario(this.jsonMain);
+                  this.cdr.detectChanges();
+                }
+              },
             }));
 
             this.botonesGeneradosFormulario = opcionesMenu;
-            console.log('Botones generados:', this.botonesGeneradosFormulario);
+            console.log(
+              '✅ Botones generados en FORMULARIO:',
+              this.botonesGeneradosFormulario
+            );
           }
         } catch (error) {
-          console.error('Error al obtener los botones:', error);
+          console.error('❌ Error al obtener los botones (FORMULARIO):', error);
         }
       } else {
-        console.log(
-          'Existen botones en JSON:',
-          json.seccionesBody.formulario.botones
-        );
-
-        let consultaBotones = `SELECT * FROM permiso;`;
-
-        try {
-          const dataBotones: any = await this.obtenerData(consultaBotones);
-          console.log('Botones obtenidos de la base de datos:', dataBotones);
-
-          // Crear un mapa de botones de la base de datos por ID
-          const botonesDB = new Map(
-            dataBotones.map((boton: any) => [boton.id.toString(), boton])
-          );
-
-          opcionesMenu = json.seccionesBody.formulario.botones
-            .map((botonStr: string) => {
-              const partes = botonStr.split('|'); // Separar por "|"
-              const id = partes[0];
-
-              if (botonesDB.has(id)) {
-                const botonDB = botonesDB.get(id) as {
-                  id: number;
-                  nombre: string;
-                };
-
-                return {
-                  id: parseInt(id),
-                  nombre: partes[1] || botonDB.nombre, // Si no tiene nombre en JSON, usa el de la BD
-                  accion:
-                    partes[2] ||
-                    `console.log('Ejecutando acción para ${botonDB.nombre}');`,
-                  onClick:
-                    botonDB.id === 1
-                      ? async (event?: Event) => {
-                          if (event) event.stopPropagation();
-                          console.log(
-                            'Botón Buscar presionado → Ejecutando realizarConsulta()'
-                          );
-                          await this.realizarConsulta();
-
-                          // ✅ Mostrar la tabla y ocultar el formulario al buscar
-                          this.mostrarListado = true;
-                          this.mostrarFormulario = false;
-                          this.cdr.detectChanges();
-                        }
-                      : botonDB.id === 2
-                      ? async (event?: Event) => {
-                          if (event) event.stopPropagation();
-                          console.log(
-                            'Botón Crear presionado → Ejecutando seleccionarFila(null)'
-                          );
-
-                          // ✅ Limpia el formulario y secciones
-                          this.buscar = false;
-                          this.mostrarListado = false;
-                          this.mostrarFormulario = true;
-                          this.seleccionarFila(null);
-
-                          // ✅ Generar nuevamente todos los botones (cuando se presiona "Crear" en modo búsqueda)
-                          this.botonesGeneradosFormulario =
-                            await this.generarBotonesFormulario(this.jsonMain);
-                          this.cdr.detectChanges();
-                        }
-                      : undefined,
-                };
-              } else {
-                console.warn(
-                  `Botón con ID ${id} no encontrado en la base de datos`
-                );
-                return { id: parseInt(id), nombre: `Opción ${id}` };
-              }
-            })
-            .filter(
-              (boton: any) => !this.buscar || boton.id === 1 || boton.id === 2
-            ); // ✅ Filtra los botones si buscar es true
-
-          this.botonesGeneradosFormulario = opcionesMenu;
-          console.log('Botones generados:', this.botonesGeneradosFormulario);
-        } catch (error) {
-          console.error('Error al obtener botones:', error);
-        }
+        console.log('Existen botones en FORMULARIO. No se realiza consulta.');
       }
     }
 
@@ -605,7 +541,6 @@ export class JsonComponent implements OnInit {
         let consultaPermisos = `SELECT * FROM aplicacion_permiso WHERE id_aplicacion = ${json.idAplicacion};`;
 
         try {
-          // 🔹 Obtener permisos
           const dataPermisos: any = await this.obtenerData(consultaPermisos);
           console.log(
             'Resultado de la primera consulta (LISTADO):',
@@ -619,52 +554,44 @@ export class JsonComponent implements OnInit {
 
             let consultaBotones = `SELECT * FROM permiso WHERE id IN (${idsPermisos});`;
 
-            // 🔹 Obtener botones desde la base de datos
             const dataBotones: any = await this.obtenerData(consultaBotones);
             console.log(
               'Resultado de la segunda consulta (LISTADO):',
               dataBotones
             );
 
-            // 🔹 Agregar evento `onClick` a cada botón
             let botonesConEventos = dataBotones.map((boton: any) => ({
               id: boton.id,
-              nombre: boton.nombre,
+              nombre: boton.id === 2 ? 'Nuevo' : boton.nombre,
               onClick: (event?: Event) => {
-                if (event) event.stopPropagation(); // 🟢 Evita que otro evento se ejecute
+                if (event) event.stopPropagation();
                 console.log(`Botón presionado: ${boton.nombre}`);
-                this.ejecutarAccion(boton.nombre); // Llama la acción correspondiente
+                this.ejecutarAccion(boton.nombre);
               },
             }));
 
-            // 🔹 Buscar botón con `id: 2` (Crear)
             const botonCrear = botonesConEventos.find((b: any) => b.id === 2);
 
-            // 🔹 Crear botón de búsqueda
-            // 🔹 Crear botón de búsqueda
             const botonBuscar = {
               id: 99,
               nombre: 'Buscar',
               onClick: async (event?: Event) => {
                 if (event) event.stopPropagation();
-                console.log('Botón Buscar presionado');
+                console.log('🔍 Botón Buscar presionado');
 
-                this.buscar = true; // 🔹 Cambia el estado de búsqueda
+                this.buscar = true;
 
-                // 🔹 Si jsonMain.alternaListadoFormulario es true, alternamos el formulario
                 if (this.jsonMain.alternaListadoFormulario === true) {
                   this.mostrarListado = false;
                   this.mostrarFormulario = true;
                 }
 
-                // 🔹 Vaciar todos los valores del formulario principal
                 Object.values(this.camposMain).forEach((filaCampos: any) => {
                   filaCampos.forEach((campo: any) => {
                     if (
                       campo.fuente?.tipo === 'array' &&
                       Array.isArray(campo.fuente.array)
                     ) {
-                      // ✅ Si es un <ng-select>, restaurar su `valorDefecto`
                       const opcionPorDefecto =
                         campo.fuente.array.find((op: any) => op.porDefecto) ||
                         campo.fuente.array[0];
@@ -672,49 +599,51 @@ export class JsonComponent implements OnInit {
                         ? opcionPorDefecto.clave
                         : null;
                     } else {
-                      // ❌ Para los demás campos, limpiarlos completamente
                       campo.valor = '';
                     }
                   });
                 });
 
-                // 🔹 Vaciar también las secciones y resetear su estructura
                 this.datosSecciones = [];
-
-                // 🔹 Regenerar la estructura del formulario con campos vacíos
                 await this.seleccionarFila(null);
-
-                // 🔹 Regenerar los botones del formulario con la nueva condición
                 this.botonesGeneradosFormulario =
                   await this.generarBotonesFormulario(this.jsonMain);
 
-                this.cdr.detectChanges(); // 🔄 Forzar actualización en la vista
+                this.cdr.detectChanges();
               },
             };
 
-            // 🔹 Si existe el botón con ID 2, solo mostrar "Crear" y "Buscar"
             if (botonCrear) {
-              botonCrear.onClick = (event?: Event) => {
+              botonCrear.onClick = async (event?: Event) => {
                 if (event) event.stopPropagation();
-                console.log(
-                  'Botón Crear presionado → Ejecutando seleccionarFila(null)'
-                );
-                this.seleccionarFila(null);
+                console.log('📝 Botón Nuevo presionado → Cargando formulario');
+
+                this.buscar = false;
+                this.mostrarListado = false;
+                this.mostrarFormulario = true;
+
+                this.datosSecciones = [];
+                await this.seleccionarFila(null);
+
+                this.botonesGeneradosFormulario =
+                  await this.generarBotonesFormulario(this.jsonMain);
+
+                this.cdr.detectChanges();
               };
+
               opcionesMenu = [botonCrear, botonBuscar];
             } else {
-              // 🔹 Si NO existe el botón con ID 2, mostrar todos los botones
               opcionesMenu = [...botonesConEventos, botonBuscar];
             }
 
             this.botonesGeneradosListado = opcionesMenu;
             console.log(
-              'Botones generados en LISTADO:',
+              '✅ Botones generados en LISTADO:',
               this.botonesGeneradosListado
             );
           }
         } catch (error) {
-          console.error('Error al obtener los botones (LISTADO):', error);
+          console.error('❌ Error al obtener los botones (LISTADO):', error);
         }
       } else {
         console.log('Existen botones en LISTADO. No se realiza consulta.');
