@@ -11,9 +11,14 @@
       </button>
     </div>
   </div>
+
   <div *ngFor="let fila of camposMain | keyvalue">
     <div class="fila">
-      <div *ngFor="let campo of fila.value" class="columna">
+      <div
+        *ngFor="let campo of fila.value"
+        class="columna"
+        [ngStyle]="{ display: campo.visible ? 'block' : 'none' }"
+      >
         <label *ngIf="campo.titulo">{{ decodificarHTML(campo.titulo) }}</label>
 
         <!-- Si es un botón, renderizamos un ícono -->
@@ -64,7 +69,11 @@
         <!-- Renderizado de los campos en filas -->
         <div *ngFor="let fila of seccion.campos">
           <div class="fila">
-            <div *ngFor="let campo of fila" class="columna">
+            <div
+              *ngFor="let campo of fila"
+              class="columna"
+              [ngStyle]="{ display: campo.visible ? 'block' : 'none' }"
+            >
               <label *ngIf="campo.titulo">{{ campo.titulo }}</label>
 
               <!-- Si es un botón, renderizamos un ícono -->
@@ -72,13 +81,14 @@
                 *ngIf="campo.nombre?.toLowerCase().startsWith('boton')"
                 [attr.id]="campo.nombre"
                 [class]="campo.class"
-                (click)="ejecutarAccion(campo.accion)"
+                (click)="accionSeccionGuardar(campo.accion, OBJ, i)"
               ></i>
 
               <!-- Si el campo tiene fuente tipo 'array', usamos ng-select con la clase personalizada -->
               <ng-select
                 *ngIf="campo.fuente?.tipo === 'array'"
                 [(ngModel)]="campo.valorDefecto"
+                (ngModelChange)="verificarFormularioVacio()"
                 class="custom-ng-select"
               >
                 <ng-option
@@ -96,6 +106,7 @@
                   !campo.nombre?.toLowerCase().startsWith('boton')
                 "
                 [(ngModel)]="campo.valorDefecto"
+                (ngModelChange)="verificarFormularioVacio()"
                 [type]="campo.tipo"
                 [maxLength]="campo.maxLength"
                 [step]="campo.step"
@@ -106,6 +117,7 @@
           </div>
         </div>
       </fieldset>
+
       <!-- Tabla debajo de cada sección -->
       <div #tablaSeccion id="tabla-seccion-{{ i }}" class="tabla-container">
         <div *ngIf="seccion.grid && seccion.grid.length > 0">
@@ -118,6 +130,8 @@
                 >
                   {{ decodificarHTML(campo?.titulo) || "Columna " + (i + 1) }}
                 </th>
+                <!-- Columna extra para los botones, con encabezado vacío -->
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -128,23 +142,22 @@
                 "
               >
                 <td
-                  *ngFor="let grupo of seccion.grid; let j = index"
+                  *ngFor="let grupo of seccion.grid"
                   [attr.colspan]="grupo?.opcionesListado?.longitud || 1"
-                  [class.celda-con-acciones]="j === seccion.grid.length - 1"
                 >
                   {{ fila[mapeoSecciones?.[grupo.titulo]] || "" }}
-
+                </td>
+                <!-- Nueva columna solo para los botones -->
+                <td class="celda-con-acciones">
                   <span
-                    *ngIf="
-                      j === seccion.grid.length - 1 && seccion.acciones?.length
-                    "
+                    *ngIf="seccion.acciones?.length"
                     class="acciones-separadas"
                   >
                     <i
                       *ngFor="let accion of seccion.acciones"
                       [attr.id]="accion.nombre"
                       [class]="accion.class"
-                      (click)="ejecutarAccion(accion.accion)"
+                      (click)="accionSeccionEliminar(accion.accion, fila, i)"
                     ></i>
                   </span>
                 </td>

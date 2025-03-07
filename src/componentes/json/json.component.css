@@ -1,5 +1,3 @@
-
-
 /* Contenedor de filas */
 .fila {
   display: flex;
@@ -124,7 +122,8 @@ i {
 }
 .filaspares tbody tr:nth-child(even) {
   background-color: #d1cccc; /* Gris claro */
-}.botones-container {
+}
+.botones-container {
   display: flex;
   gap: 12px; /* Espaciado entre los botones */
   flex-wrap: wrap; /* Permite que los botones se ajusten si no caben en una línea */
@@ -168,7 +167,7 @@ i {
   position: relative; /* Necesario para que los elementos internos usen "position: absolute" */
 }
 
-.tabla-main-container{
+.tabla-main-container {
   height: 50em;
   overflow-y: auto;
 }

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import Swal from 'sweetalert2'; // ✅ Importa SweetAlert2
+import Swal from 'sweetalert2';
 import {
   Component,
   OnInit,
@@ -45,7 +45,9 @@ export class JsonComponent implements OnInit {
   accionesListado: any[] = [];
   seccionesData: { [key: string]: { datos: any[]; offset: number } } = {};
   buscar: boolean = false;
-
+  idFilaSeleccionada: number | null = null;
+  idFilaSeleccionadaSeccion: any = null;
+  OBJ: any = {};
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
@@ -60,6 +62,7 @@ export class JsonComponent implements OnInit {
 
   offset = 0;
   offsetSeccion = 0;
+
   scrollSubscription!: Subscription;
   seccionesSubscriptions: Subscription[] = [];
 
@@ -67,13 +70,11 @@ export class JsonComponent implements OnInit {
     // 🔹 Scroll para el contenedor principal
     setTimeout(() => {
       if (this.tablaContainer) {
-        console.log('📌 tablaContainer encontrado:', this.tablaContainer);
-
         this.scrollSubscription = fromEvent(
           this.tablaContainer.nativeElement,
           'scroll'
         )
-          .pipe(throttleTime(300)) // Evita llamadas excesivas
+          .pipe(throttleTime(300))
           .subscribe(() => {
             if (
               this.tablaContainer.nativeElement.scrollTop +
@@ -88,19 +89,10 @@ export class JsonComponent implements OnInit {
       }
     }, 800);
 
-    // 🔹 Scroll para cada sección
+    //Scroll para cada sección
     setTimeout(() => {
       if (this.tablasSecciones) {
-        console.log(`📌 Detectando scroll en sección `);
-        console.log(`tablasSeccionesssss`, this.tablasSecciones);
-
-        // 🔹 Esperar a que los elementos de las secciones estén listos
         this.tablasSecciones.changes.subscribe(() => {
-          console.log(
-            '📌 Secciones detectadas:',
-            this.tablasSecciones.toArray()
-          );
-
           this.tablasSecciones.forEach((tablasSecciones, index) => {
             fromEvent(tablasSecciones.nativeElement, 'scroll')
               .pipe(throttleTime(300))
@@ -144,13 +136,10 @@ export class JsonComponent implements OnInit {
 
     let seccion = this.jsonMain.secciones[index];
 
-    // Si la sección usa formulario alterno, no cargamos más datos
     if (seccion.alternaListadoFormulario) return;
 
-    // 🔹 Incrementamos el offset específico de la sección
     seccion.offsetSeccion = (seccion.offsetSeccion || 0) + 1;
 
-    // 🔹 Cargamos el JSON de la sección
     const jsonSeccion: any = await this.cargarJson(seccion.origen);
 
     let consulta = `SELECT * FROM ${jsonSeccion.tabla}`;
@@ -163,7 +152,7 @@ export class JsonComponent implements OnInit {
 
     const dataSeccion: any = await this.obtenerData(consulta);
 
-    // 🔹 Buscamos la sección dentro de `datosSecciones` y actualizamos `gridInfo`
+    //Buscamos la sección dentro de `datosSecciones` y actualizamos `gridInfo`
     const datosSeccionIndex = this.datosSecciones.findIndex(
       (s) => s.nombre === seccion.nombre
     );
@@ -180,7 +169,6 @@ export class JsonComponent implements OnInit {
   }
 
   ngOnDestroy() {
-    // Eliminar suscripción cuando el componente se destruya
     if (this.scrollSubscription) {
       this.scrollSubscription.unsubscribe();
     }
@@ -200,9 +188,9 @@ export class JsonComponent implements OnInit {
     this.camposMain = camposPorFila;
     this.gridMain = grid; // Guardar el grid principal
     this.datosGridMain = this.datosTablaMain;
-    console.log('campos main', this.camposMain);
 
     this.mapeoColumnas = this.generarMapeoColumnas();
+    this.verificarFormularioVacio();
 
     let consulta = `SELECT * FROM ${this.jsonMain.tabla}`;
 
@@ -214,13 +202,12 @@ export class JsonComponent implements OnInit {
       consulta += ` ORDER BY ${this.jsonMain.orderBy}`;
     }
 
-    // Agregamos limit y offset con variables
     consulta += ` LIMIT ${this.limit} OFFSET ${this.limit * this.offset};`;
 
     const dataMain: any = await this.obtenerData(consulta);
 
     this.datosGridMain = dataMain;
-    console.log('datosGridMain', this.datosGridMain);
+
     this.datosTablaMain = dataMain;
 
     if (this.jsonMain.alternaListadoFormulario === true) {
@@ -251,7 +238,7 @@ export class JsonComponent implements OnInit {
         mapeo[elemento.titulo] = nombreModificado;
       }
     });
-
+    console.log('🔍 Mapeo generado en formulario principal:', mapeo);
     return mapeo;
   }
   generarMapeoSecciones(): any {
@@ -266,22 +253,23 @@ export class JsonComponent implements OnInit {
         });
       }
     });
-
+    console.log('🔍 Mapeo generado en secciones:', mapeo);
     return mapeo;
   }
   async seleccionarFila(fila: any) {
+    this.datosSecciones = [];
     console.log('Fila seleccionada:', fila);
-    this.datosSecciones = []; // Limpiar secciones para volver a generarlas
 
-    // Si la fila es null, vaciar el formulario principal
-    if (fila === null) {
+    if (!fila) {
+      this.idFilaSeleccionada = null;
+      console.log('No se ha seleccionado ninguna fila.');
+
       Object.values(this.camposMain).forEach((filaCampos: any) => {
         filaCampos.forEach((campo: any) => {
           if (
             campo.fuente?.tipo === 'array' &&
             Array.isArray(campo.fuente.array)
           ) {
-            // Buscar si hay un valor por defecto en el array de opciones
             const opcionPorDefecto =
               campo.fuente.array.find((op: any) => op.porDefecto) ||
               campo.fuente.array[0];
@@ -289,31 +277,29 @@ export class JsonComponent implements OnInit {
               ? opcionPorDefecto.clave
               : null;
           } else {
-            campo.valorDefecto = ''; // Limpiar el resto de los campos
+            campo.valorDefecto = '';
           }
         });
       });
 
-      // 🔹 Mantener las secciones pero con el formulario vacío
-      if (this.jsonMain.secciones && this.jsonMain.secciones.length > 0) {
+      if (this.jsonMain.secciones?.length) {
         for (let seccion of this.jsonMain.secciones) {
-          // Cargar la estructura de la sección sin datos
           const jsonprueba: any = await this.cargarJson(seccion.origen);
           const [camposPorFilaSeccion, gridSeccion] =
             this.generarEstructura(jsonprueba);
 
           this.datosSecciones.push({
             nombre: seccion.nombre,
-            campos: Object.values(camposPorFilaSeccion), // Campos vacíos
+            campos: Object.values(camposPorFilaSeccion),
             grid: gridSeccion,
-            gridInfo: null, // Vaciar los datos de la sección
+            gridInfo: null,
             acciones: [],
           });
         }
       }
 
       this.mapeoSecciones = this.generarMapeoSecciones();
-      if (this.alternaListadoFormulario == true) {
+      if (this.alternaListadoFormulario) {
         this.mostrarListado = false;
         this.mostrarFormulario = true;
       }
@@ -321,19 +307,30 @@ export class JsonComponent implements OnInit {
       return;
     }
 
-    // 🔹 Si fila no es null, llenar los valores normalmente
-    Object.values(this.camposMain).forEach(async (filaCampos: any) => {
+    this.idFilaSeleccionada = fila.id || fila['id'] || null;
+    console.log('✅ ID de la fila seleccionada:', this.idFilaSeleccionada);
+
+    if (!this.idFilaSeleccionada) {
+      console.warn('⚠️ La fila seleccionada no tiene un ID válido.');
+    }
+
+    Object.values(this.camposMain).forEach((filaCampos: any) => {
       filaCampos.forEach((campo: any) => {
-        const key = this.mapeoColumnas[campo.titulo];
-        let valor = fila[key] || fila[campo.nombre];
+        let campoTransformado = campo.nombre
+          .replace(/([a-z])([A-Z])/g, '$1_$2')
+          .replace(/_[A-Z]+$/, '')
+          .toLowerCase();
+
+        const key = this.mapeoColumnas[campo.titulo] || campoTransformado;
+
+        let valor = fila[key];
 
         if (valor && typeof valor === 'string' && valor.includes('T')) {
           const fecha = new Date(valor);
-
           if (campo.tipo === 'date') {
-            valor = fecha.toISOString().split('T')[0]; // Formato "YYYY-MM-DD"
+            valor = fecha.toISOString().split('T')[0];
           } else if (campo.tipo === 'datetime-local') {
-            valor = fecha.toISOString().slice(0, 16); // Formato "YYYY-MM-DDTHH:mm"
+            valor = fecha.toISOString().slice(0, 16);
           }
         }
 
@@ -341,8 +338,7 @@ export class JsonComponent implements OnInit {
       });
     });
 
-    // 🔹 Recargar las secciones con datos si fila es válida
-    if (this.jsonMain.secciones && this.jsonMain.secciones.length > 0) {
+    if (this.jsonMain.secciones?.length) {
       for (let seccion of this.jsonMain.secciones) {
         if (!seccion.alternaListadoFormulario) {
           const jsonprueba: any = await this.cargarJson(seccion.origen);
@@ -360,50 +356,67 @@ export class JsonComponent implements OnInit {
           };`;
 
           let dataSeccion: any = await this.obtenerData(consulta);
-          console.log('consulta secciones', consulta);
+          console.log('🔍 Consulta secciones:', consulta);
 
-          let accionesSeccion = [];
-          if (jsonprueba.accionesListado) {
-            accionesSeccion = jsonprueba.accionesListado
-              .filter((accion: any) => accion.tipoGenerico === 'control')
-              .map((accion: any) => ({
-                nombre: accion.nombre,
-                class: accion.class || 'fa fa-button',
-                accion: accion.accion || '',
-                tipoControl: accion.tipoControl || 'i',
-              }));
-          }
+          let accionesSeccion = jsonprueba.accionesListado
+            ? jsonprueba.accionesListado
+                .filter((accion: any) => accion.tipoGenerico === 'control')
+                .map((accion: any) => ({
+                  nombre: accion.nombre,
+                  class: accion.class || 'fa fa-button',
+                  accion: accion.accion || '',
+                  tipoControl: accion.tipoControl || 'i',
+                }))
+            : [];
 
           this.datosSecciones.push({
             nombre: seccion.nombre,
             campos: Object.values(camposPorFilaSeccion),
             grid: gridSeccion,
-            gridInfo: fila ? dataSeccion : null, // Si fila es null, vaciar datos
+            gridInfo: dataSeccion || null,
             acciones: accionesSeccion,
           });
         }
       }
       this.mapeoSecciones = this.generarMapeoSecciones();
     }
-    this.buscar = false;
-    if (fila == null) this.alternarListado();
 
+    this.buscar = false;
+    if (!fila) this.alternarListado();
     this.cdr.detectChanges();
   }
 
   seleccionarFilaSeccion(fila: any, index: number) {
+    console.log('✅ Fila seleccionada:', fila, 'en la sección:', index);
+
+    if (fila.id !== undefined) {
+      this.idFilaSeleccionadaSeccion = fila.id;
+      console.log(
+        '🆔 ID de la fila seleccionada:',
+        this.idFilaSeleccionadaSeccion
+      );
+    } else {
+      console.warn('⚠️ La fila seleccionada no tiene un campo "id".');
+      this.idFilaSeleccionadaSeccion = null;
+    }
+
     this.datosSecciones[index].campos.forEach((filaCampo: any) => {
       filaCampo.forEach((campo: any) => {
-        const key = this.mapeoSecciones[campo.titulo];
+        let campoTransformado = campo.nombre
+          .replace(/([a-z])([A-Z])/g, '$1_$2')
+          .replace(/_[A-Z]+$/, '')
+          .toLowerCase();
+
+        const key = this.mapeoSecciones[campo.titulo] || campoTransformado;
 
         let valor = fila[key];
 
         if (valor && typeof valor === 'string' && valor.includes('T')) {
           const fecha = new Date(valor);
           if (campo.tipo === 'date') {
-            valor = fecha.toISOString().split('T')[0]; // Formato "YYYY-MM-DD"
+            valor = fecha.toISOString().split('T')[0];
           } else if (campo.tipo === 'datetime-local') {
-            valor = fecha.toISOString().slice(0, 16); // Formato "YYYY-MM-DDTHH:mm"
+            valor = fecha.toISOString().slice(0, 16);
           }
         }
 
@@ -413,10 +426,10 @@ export class JsonComponent implements OnInit {
 
     this.cdr.detectChanges();
   }
+
   async generarBotonesFormulario(json: any) {
     let opcionesMenu: any[] = [];
 
-    // 🔹 Limpiar los botones antes de regenerarlos
     this.botonesGeneradosFormulario = [];
 
     if (
@@ -424,10 +437,6 @@ export class JsonComponent implements OnInit {
       Array.isArray(json.seccionesBody.formulario.botones)
     ) {
       if (json.seccionesBody.formulario.botones.length === 0) {
-        console.log(
-          'No existen botones en FORMULARIO. Consultando base de datos...'
-        );
-
         let consultaPermisos = `SELECT * FROM aplicacion_permiso WHERE id_aplicacion = ${json.idAplicacion};`;
 
         try {
@@ -468,12 +477,8 @@ export class JsonComponent implements OnInit {
 
                 if (boton.id === 1) {
                   // Botón "Consultar"
-                  console.log(
-                    '🔍 Botón Consultar presionado → Ejecutando consulta'
-                  );
                   await this.realizarConsulta();
 
-                  // 🔹 Si no hay registros, no cambiar la vista
                   if (!this.datosGridMain || this.datosGridMain.length === 0) {
                     console.log(
                       '⚠️ No se encontraron registros. Manteniendo la vista actual.'
@@ -481,7 +486,6 @@ export class JsonComponent implements OnInit {
                     return;
                   }
 
-                  // 🔹 Si hay registros, alternar entre listado y formulario
                   this.mostrarListado = true;
                   this.mostrarFormulario = false;
                   this.buscar = false;
@@ -491,9 +495,6 @@ export class JsonComponent implements OnInit {
                   this.cdr.detectChanges();
                 } else if (boton.id === 2) {
                   // Botón "Nuevo"
-                  console.log(
-                    '📝 Botón Nuevo presionado → Cargando formulario'
-                  );
                   this.buscar = false;
                   this.mostrarListado = false;
                   this.mostrarFormulario = true;
@@ -501,9 +502,21 @@ export class JsonComponent implements OnInit {
                   this.datosSecciones = [];
                   await this.seleccionarFila(null);
 
-                  // Regenerar los botones del formulario
                   this.botonesGeneradosFormulario =
                     await this.generarBotonesFormulario(this.jsonMain);
+                  this.cdr.detectChanges();
+                } else if (boton.id === 3) {
+                  // Botón "Modificar"
+
+                  await this.modificarFormulario();
+
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Formulario Modificado',
+                    text: 'Los cambios han sido guardados exitosamente.',
+                    confirmButtonText: 'OK',
+                  });
+
                   this.cdr.detectChanges();
                 }
               },
@@ -516,7 +529,7 @@ export class JsonComponent implements OnInit {
             );
           }
         } catch (error) {
-          console.error('❌ Error al obtener los botones (FORMULARIO):', error);
+          console.error(' Error al obtener los botones (FORMULARIO):', error);
         }
       } else {
         console.log('Existen botones en FORMULARIO. No se realiza consulta.');
@@ -534,10 +547,6 @@ export class JsonComponent implements OnInit {
       Array.isArray(json.seccionesBody.listado.botones)
     ) {
       if (json.seccionesBody.listado.botones.length === 0) {
-        console.log(
-          'No existen botones en LISTADO. Consultando base de datos...'
-        );
-
         let consultaPermisos = `SELECT * FROM aplicacion_permiso WHERE id_aplicacion = ${json.idAplicacion};`;
 
         try {
@@ -577,7 +586,6 @@ export class JsonComponent implements OnInit {
               nombre: 'Buscar',
               onClick: async (event?: Event) => {
                 if (event) event.stopPropagation();
-                console.log('🔍 Botón Buscar presionado');
 
                 this.buscar = true;
 
@@ -616,7 +624,6 @@ export class JsonComponent implements OnInit {
             if (botonCrear) {
               botonCrear.onClick = async (event?: Event) => {
                 if (event) event.stopPropagation();
-                console.log('📝 Botón Nuevo presionado → Cargando formulario');
 
                 this.buscar = false;
                 this.mostrarListado = false;
@@ -643,7 +650,7 @@ export class JsonComponent implements OnInit {
             );
           }
         } catch (error) {
-          console.error('❌ Error al obtener los botones (LISTADO):', error);
+          console.error('Error al obtener los botones (LISTADO):', error);
         }
       } else {
         console.log('Existen botones en LISTADO. No se realiza consulta.');
@@ -662,9 +669,8 @@ export class JsonComponent implements OnInit {
       this.datos.campos
         .filter(
           (campo: Campo) =>
-            campo.visible === true &&
-            (Object.keys(campo.fuente || {}).length === 0 ||
-              campo.fuente.tipo !== 'bd')
+            Object.keys(campo.fuente || {}).length === 0 ||
+            campo.fuente.tipo !== 'bd'
         )
         .forEach((campo: Campo) => {
           let inputType = 'text';
@@ -673,7 +679,6 @@ export class JsonComponent implements OnInit {
           let opciones: any[] = [];
           let valorDefecto: string | undefined = undefined;
 
-          // Procesamiento del campo (opciones, valor por defecto, tipo, etc.)
           if (campo.fuente?.tipo === 'array' && campo.fuente.array) {
             opciones = campo.fuente.array.map((option) => ({
               clave: option.clave,
@@ -733,6 +738,7 @@ export class JsonComponent implements OnInit {
               tipo: campo.fuente?.tipo,
               array: opciones,
             },
+            visible: campo.visible,
           };
 
           const fila = campo.posicion || 1;
@@ -753,7 +759,9 @@ export class JsonComponent implements OnInit {
             class: campo.class || 'fa fa-button',
             accion: campo.accion || '',
             tipoControl: campo.tipoControl || 'i',
+            visible: campo.visible,
           };
+          console.log('botonProcesado', botonProcesado);
 
           const fila = campo.posicion || 1;
           if (!camposPorFila[fila]) {
@@ -870,29 +878,31 @@ export class JsonComponent implements OnInit {
 
       const mapeoCampos: { [key: string]: string } = {};
 
-      // 🔹 Crear mapeo de nombres de campos
+      // 🔹 Crear mapeo de nombres de campos, solo si son visibles
       for (const fila of Object.values(this.camposMain)) {
         for (const campo of fila) {
-          if (campo.nombre && campo.campoBD) {
+          if (campo.visible && campo.nombre && campo.campoBD) {
             mapeoCampos[campo.nombre] = campo.campoBD;
           }
         }
       }
 
-      console.log('🔄 Mapeo de nombres de campos:', mapeoCampos);
+      console.log(
+        '🔄 Mapeo de nombres de campos (solo visibles):',
+        mapeoCampos
+      );
 
-      // 🔹 Capturar valores de los campos
+      // 🔹 Capturar valores de los campos visibles
       for (const fila of Object.values(this.camposMain)) {
         for (const campo of fila) {
-          if (!campo.nombre || !mapeoCampos[campo.nombre]) {
-            console.warn(`⚠️ No se encontró campoBD para ${campo.nombre}`);
-            continue;
+          if (!campo.visible || !campo.nombre || !mapeoCampos[campo.nombre]) {
+            continue; // ❌ Saltar campos no visibles
           }
 
           const nombreBD = mapeoCampos[campo.nombre];
           let valor = '';
 
-          // 🔹 Si es un ng-select, obtenemos el valor desde campo.valorDefecto
+          // 🔹 Si es un ng-select, obtener el valor desde campo.valorDefecto
           if (campo.fuente?.tipo === 'array') {
             valor = campo.valorDefecto || ''; // ✅ Obtener el valor directamente del modelo
             console.log(`✅ Valor capturado de ng-select: ${valor}`);
@@ -926,7 +936,7 @@ export class JsonComponent implements OnInit {
         }
       }
 
-      console.log('📝 Datos capturados:', cambiosGuardados);
+      console.log('📝 Datos capturados (solo visibles):', cambiosGuardados);
 
       if (Object.keys(cambiosGuardados).length === 0) {
         console.warn('⚠️ No hay datos para consultar.');
@@ -982,6 +992,139 @@ export class JsonComponent implements OnInit {
       this.cdr.detectChanges();
     }
   }
+// <------------- Función que ejecuta el boton modificar del formulario y el del listado------------->
+  async modificarFormulario() {
+    try {
+      const cambiosGuardados: { [key: string]: any } = {};
+
+      if (!this.camposMain) {
+        console.error('❌ Error: this.camposMain no está definido.');
+        return;
+      }
+
+      if (this.idFilaSeleccionada === null) {
+        console.error('❌ Error: No hay fila seleccionada para modificar.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Debe seleccionar una fila antes de modificar.',
+          confirmButtonText: 'OK',
+        });
+        return;
+      }
+
+      console.log('📌 ID de la fila a modificar:', this.idFilaSeleccionada);
+      console.log('📌 Verificando camposMain:', this.camposMain);
+
+      const mapeoCampos: { [key: string]: string } = {};
+
+      // 🔹 Crear mapeo solo con los campos visibles
+      for (const fila of Object.values(this.camposMain)) {
+        for (const campo of fila) {
+          if (campo.visible && campo.nombre && campo.campoBD) {
+            mapeoCampos[campo.nombre] = campo.campoBD;
+          }
+        }
+      }
+
+      console.log(
+        '🔄 Mapeo de nombres de campos (solo visibles):',
+        mapeoCampos
+      );
+
+      // 🔹 Capturar valores de los campos visibles
+      for (const fila of Object.values(this.camposMain)) {
+        for (const campo of fila) {
+          if (!campo.visible || !campo.nombre || !mapeoCampos[campo.nombre]) {
+            continue;
+          }
+
+          const nombreBD = mapeoCampos[campo.nombre];
+          let valor = '';
+
+          // 🔹 Si es un ng-select, obtener el valor desde campo.valorDefecto
+          if (campo.fuente?.tipo === 'array') {
+            valor = campo.valorDefecto || '';
+            console.log(
+              `✅ Valor capturado de ng-select (${nombreBD}): ${valor}`
+            );
+          } else {
+            // 🔹 Buscar input con ID normal o con "_consulta"
+            const elemento =
+              document.getElementById(campo.nombre) ||
+              document.getElementById(`${campo.nombre}_consulta`);
+
+            if (!elemento) {
+              console.warn(
+                `⚠️ No se encontró un input/select con ID: ${campo.nombre} o ${campo.nombre}_consulta`
+              );
+              continue;
+            }
+
+            if (
+              elemento instanceof HTMLInputElement ||
+              elemento instanceof HTMLSelectElement
+            ) {
+              valor = elemento.value?.trim() || '';
+              console.log(
+                `✅ Valor capturado de input/select (${nombreBD}): ${valor}`
+              );
+            }
+          }
+
+          // 🔹 Guardar solo los valores que realmente cambiaron
+          if (valor) {
+            cambiosGuardados[nombreBD] = valor;
+          }
+        }
+      }
+
+      console.log('📝 Datos capturados para modificación:', cambiosGuardados);
+
+      if (Object.keys(cambiosGuardados).length === 0) {
+        console.warn('⚠️ No hay datos para modificar.');
+        Swal.fire({
+          icon: 'warning',
+          title: 'Sin cambios',
+          text: 'No se detectaron modificaciones en el formulario.',
+          confirmButtonText: 'OK',
+        });
+        return;
+      }
+
+      // 🔹 Generar la consulta de actualización
+      const actualizaciones = Object.entries(cambiosGuardados)
+        .map(([campoBD, valor]) => `${campoBD} = '${valor}'`)
+        .join(', ');
+
+      const consulta = `UPDATE ${this.jsonMain.tabla} SET ${actualizaciones} WHERE id = '${this.idFilaSeleccionada}';`;
+
+      console.log('✏️ Consulta de actualización generada:', consulta);
+
+      // 🔹 Ejecutar la consulta
+      const resultado = await this.obtenerData(consulta);
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Modificación exitosa',
+        text: 'El formulario se ha actualizado correctamente.',
+        confirmButtonText: 'OK',
+      });
+
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('❌ Error al modificar el formulario:', error);
+
+      Swal.fire({
+        icon: 'error',
+        title: 'Error en la modificación',
+        text: 'Ocurrió un error al actualizar el formulario.',
+        confirmButtonText: 'Aceptar',
+      });
+
+      this.cdr.detectChanges();
+    }
+  }
 
   formatearFecha(fecha: string): string {
     const date = new Date(fecha);
@@ -1007,11 +1150,22 @@ export class JsonComponent implements OnInit {
   }
 
   ejecutarAccion(accion: string) {
-    console.log('entro a ejecutarAccion con la accion', accion);
+  }
+
+  // <------------- Funciones para ejecutar botones guardar y eliminar de las secciones ------------->
+  accionSeccionEliminar(accion: string, OBJ: any, index: number) {
+    console.log(
+      '➡️ EjecutarAccion con:',
+      accion,
+      'objeto:',
+      OBJ,
+      'índice:',
+      index
+    );
+
     if (!accion) return;
 
     try {
-      // Separar la acción en múltiples comandos si hay ";"
       const comandos = accion
         .split(';')
         .map((cmd) => cmd.trim())
@@ -1019,7 +1173,62 @@ export class JsonComponent implements OnInit {
 
       for (const cmd of comandos) {
         const funcMatch = cmd.match(/^([\w]+)\((.*?)\)$/);
+        let functionName: string;
+        let args: any[] = [];
 
+        if (funcMatch) {
+          // Caso: función con paréntesis (ej: "miFuncion(1,2)")
+          functionName = funcMatch[1];
+          const argsString = funcMatch[2];
+          args = argsString
+            ? argsString
+                .split(',')
+                .map((arg) => arg.trim().replace(/^['"](.*)['"]$/, '$1'))
+            : [];
+        } else {
+          // Caso: función sin paréntesis (ej: "eliminarEITM")
+          functionName = cmd;
+        }
+
+        console.log(
+          `🔹 Ejecutando función ${functionName} con índice`,
+          index,
+          'y objeto:',
+          OBJ
+        );
+
+        if (typeof (this as any)[functionName] === 'function') {
+          (this as any)[functionName](index, ...args); // Llamar función con índice
+        } else if (typeof (window as any)[functionName] === 'function') {
+          (window as any)[functionName](index, ...args);
+        } else {
+          console.error(`❌ Función ${functionName} no encontrada.`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error ejecutando la acción:', error);
+    }
+  }
+  accionSeccionGuardar(accion: string, OBJ: any, index: number) {
+    console.log(
+      '➡️ EjecutarAccion con:',
+      accion,
+      'objeto:',
+      OBJ,
+      'índice:',
+      index
+    );
+
+    if (!accion) return;
+
+    try {
+      const comandos = accion
+        .split(';')
+        .map((cmd) => cmd.trim())
+        .filter((cmd) => cmd.length > 0);
+
+      for (const cmd of comandos) {
+        const funcMatch = cmd.match(/^([\w]+)\((.*?)\)$/);
         if (funcMatch) {
           const functionName = funcMatch[1];
           const argsString = funcMatch[2];
@@ -1029,42 +1238,712 @@ export class JsonComponent implements OnInit {
                 .map((arg) => arg.trim().replace(/^['"](.*)['"]$/, '$1'))
             : [];
 
+          console.log(
+            `🔹 Ejecutando función ${functionName} con índice`,
+            index,
+            'y objeto:',
+            OBJ
+          );
+
+          // Asegurar que la función existe en el contexto actual
           if (typeof (this as any)[functionName] === 'function') {
-            console.log(
-              `Ejecutando función en this: ${functionName} con argumentos`,
-              args
-            );
-            (this as any)[functionName](...args);
+            (this as any)[functionName](OBJ, index, ...args);
           } else if (typeof (window as any)[functionName] === 'function') {
+            (window as any)[functionName](OBJ, index, ...args);
+          } else if (typeof (this as any)[accion] === 'function') {
+            // ✅ Nueva lógica: Si el nombre de la acción coincide con una función, ejecutarla
             console.log(
-              `Ejecutando función en window: ${functionName} con argumentos`,
-              args
+              `🔹 Ejecutando función ${accion} con objeto:`,
+              OBJ,
+              'y índice:',
+              index
             );
-            (window as any)[functionName](...args);
+            (this as any)[accion](OBJ, index);
           } else {
-            console.error(`Función ${functionName} no encontrada.`);
+            console.error(`❌ Función ${functionName} no encontrada.`);
           }
-        } else {
-          console.warn(`Comando ignorado: ${cmd} (no es una función válida)`);
         }
       }
     } catch (error) {
-      console.error('Error ejecutando la acción:', error);
+      console.error('❌ Error ejecutando la acción:', error);
+    }
+  }
+  verificarFormularioVacio() {
+    let todosCamposVacios = true;
+
+    this.datosSecciones.forEach((seccion) => {
+      seccion.campos.forEach((filaCampos: any) => {
+        filaCampos.forEach((campo: any) => {
+          if (
+            campo.visible &&
+            !campo.nombre.toLowerCase().startsWith('boton')
+          ) {
+            let valor = campo.valorDefecto || '';
+            if (valor.trim() !== '') {
+              todosCamposVacios = false;
+            }
+          }
+        });
+      });
+    });
+
+    if (todosCamposVacios) {
+      console.warn(
+        '⚠️ Todos los campos fueron vaciados manualmente. Se reseteará la selección.'
+      );
+      this.idFilaSeleccionadaSeccion = null; // 🔥 Deseleccionar la fila automáticamente
+    }
+  }
+  // <------------- Funciones para botones guardar de las secciones ------------->
+  async guardarEMP(OBJ: any, index: number) {
+    try {
+      console.log('📌 Objeto recibido en guardarEMP:', OBJ);
+
+      let seccion = this.datosSecciones[index];
+
+      if (this.jsonMain.secciones?.length) {
+        for (let sec of this.jsonMain.secciones) {
+          if (sec.nombre === seccion.nombre) {
+            seccion.origen = sec.origen;
+            break;
+          }
+        }
+      }
+
+      if (!seccion) {
+        console.error('❌ No se encontró la sección activa.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se encontró la sección activa para guardar los datos.',
+        });
+        return;
+      }
+
+      const jsonSeccion: any = await this.cargarJson(seccion.origen);
+      console.log('📥 JSON de la sección cargado:', jsonSeccion);
+
+      if (!jsonSeccion || !jsonSeccion.tabla) {
+        console.error(
+          '❌ No se pudo obtener la configuración de la sección.',
+          jsonSeccion
+        );
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudo obtener la configuración de la sección.',
+        });
+        return;
+      }
+
+      let cambiosGuardados: { [key: string]: any } = {};
+      let idSeccion: number | null = this.idFilaSeleccionadaSeccion;
+      let campoIdPadre = '';
+
+      if (!idSeccion) {
+        console.warn('⚠️ No hay fila seleccionada, se realizará un INSERT.');
+
+        if (!jsonSeccion.tablaPadre) {
+          console.error('❌ No se encontró tablaPadre en el JSON.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró tablaPadre en la configuración.',
+          });
+          return;
+        }
+
+        let tablaPadreCamel = jsonSeccion.tablaPadre.replace(
+          /_([a-z])/g,
+          (_: string, letra: string) => letra.toUpperCase()
+        );
+        console.log(
+          `📝 Tabla padre convertida a camelCase: ${tablaPadreCamel}`
+        );
+
+        const jsonPadre: any = await this.cargarJson(tablaPadreCamel);
+        console.log('📥 JSON de la tabla padre cargado:', jsonPadre);
+
+        if (!jsonPadre || !jsonPadre.secciones) {
+          console.error(
+            '❌ No se encontró la sección en el JSON padre.',
+            jsonPadre
+          );
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró la configuración de la tabla padre.',
+          });
+          return;
+        }
+
+        let sufijo = jsonSeccion.sufijo;
+        console.log(`🔎 Buscando sección con sufijo: ${sufijo}`);
+
+        let seccionPadre = jsonPadre.secciones.find(
+          (sec: any) => sec.nombre === sufijo
+        );
+
+        if (!seccionPadre) {
+          console.error(
+            `❌ No se encontró una sección en la tabla padre con sufijo: ${sufijo}`
+          );
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: `No se encontró una sección en la tabla padre con el sufijo: ${sufijo}`,
+          });
+          return;
+        }
+
+        campoIdPadre = seccionPadre.campoIdPadre;
+        if (!campoIdPadre) {
+          console.error('❌ No se encontró campoIdPadre en la sección padre.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró campoIdPadre en la tabla padre.',
+          });
+          return;
+        }
+
+        console.log(`🔑 Campo ID Padre obtenido: ${campoIdPadre}`);
+      }
+
+      seccion.campos.forEach((filaCampos: any) => {
+        filaCampos.forEach((campo: any) => {
+          if (
+            campo.visible &&
+            !campo.nombre.toLowerCase().startsWith('boton')
+          ) {
+            let campoTransformado = campo.nombre
+              .replace(/([a-z])([A-Z])/g, '$1_$2')
+              .replace(/_[A-Z]+$/, '')
+              .toLowerCase();
+            const key = this.mapeoSecciones[campo.titulo] || campoTransformado;
+            console.log(
+              `🔑 Campo "${campo.titulo || campoTransformado}" mapeado como:`,
+              key
+            );
+
+            let valor = campo.valorDefecto || '';
+
+            if (campo.tipo === 'date' && valor) {
+              valor = new Date(valor).toISOString().split('T')[0];
+            } else if (campo.tipo === 'datetime-local' && valor) {
+              valor = new Date(valor).toISOString().slice(0, 16);
+            }
+
+            if (key !== 'id') {
+              cambiosGuardados[key] = valor;
+            }
+          }
+        });
+      });
+
+      console.log('📤 Datos a guardar:', cambiosGuardados);
+
+      if (Object.keys(cambiosGuardados).length === 0) {
+        console.warn('⚠️ No hay cambios para guardar.');
+        Swal.fire({
+          icon: 'warning',
+          title: 'Sin cambios',
+          text: 'No se detectaron modificaciones en la sección.',
+        });
+        return;
+      }
+
+      try {
+        let consulta = '';
+
+        if (!idSeccion) {
+          cambiosGuardados[campoIdPadre] = this.idFilaSeleccionada;
+          const campos = Object.keys(cambiosGuardados).join(', ');
+          const valores = Object.values(cambiosGuardados)
+            .map((valor) => `'${valor}'`)
+            .join(', ');
+          consulta = `INSERT INTO ${jsonSeccion.tabla} (${campos}) VALUES (${valores});`;
+        } else {
+          const setQuery = Object.entries(cambiosGuardados)
+            .map(([campoBD, valor]) => `${campoBD} = '${valor}'`)
+            .join(', ');
+          consulta = `UPDATE ${jsonSeccion.tabla} SET ${setQuery} WHERE id = ${idSeccion};`;
+        }
+
+        console.log('📜 Ejecutando consulta SQL:', consulta);
+        const resultado = await this.obtenerData(consulta);
+        console.log('✅ Resultado de la consulta:', resultado);
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Guardado exitoso',
+          text: 'Los cambios en la sección han sido guardados correctamente.',
+        });
+
+        this.idFilaSeleccionadaSeccion = null;
+        this.datosSecciones.forEach((seccion) => {
+          seccion.campos.forEach((filaCampos: any) => {
+            filaCampos.forEach((campo: any) => {
+              if (campo.visible) {
+                campo.valorDefecto = '';
+              }
+            });
+          });
+        });
+
+        this.cdr.detectChanges();
+      } catch (error: any) {
+        console.error('❌ Error en obtenerData():', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error en la base de datos',
+          text: `No se pudo guardar la sección: ${error.message}`,
+        });
+        this.cdr.detectChanges();
+      }
+    } catch (error) {
+      console.error('❌ Error inesperado en guardarEMP:', error);
     }
   }
 
-  guardarEMP(valor: string) {
-    console.log(`guardarEMP ejecutado con valor: ${valor}`);
+  async guardarEITM(OBJ: any, index: number) {
+    try {
+      console.log('📌 Objeto recibido en guardarEMP:', OBJ);
+
+      let seccion = this.datosSecciones[index];
+
+      if (this.jsonMain.secciones?.length) {
+        for (let sec of this.jsonMain.secciones) {
+          if (sec.nombre === seccion.nombre) {
+            seccion.origen = sec.origen;
+            break;
+          }
+        }
+      }
+
+      if (!seccion) {
+        console.error('❌ No se encontró la sección activa.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se encontró la sección activa para guardar los datos.',
+        });
+        return;
+      }
+
+      const jsonSeccion: any = await this.cargarJson(seccion.origen);
+      console.log('📥 JSON de la sección cargado:', jsonSeccion);
+
+      if (!jsonSeccion || !jsonSeccion.tabla) {
+        console.error(
+          '❌ No se pudo obtener la configuración de la sección.',
+          jsonSeccion
+        );
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudo obtener la configuración de la sección.',
+        });
+        return;
+      }
+
+      let cambiosGuardados: { [key: string]: any } = {};
+      let idSeccion: number | null = this.idFilaSeleccionadaSeccion;
+      let campoIdPadre = '';
+
+      if (!idSeccion) {
+        console.warn('⚠️ No hay fila seleccionada, se realizará un INSERT.');
+
+        if (!jsonSeccion.tablaPadre) {
+          console.error('❌ No se encontró tablaPadre en el JSON.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró tablaPadre en la configuración.',
+          });
+          return;
+        }
+
+        let tablaPadreCamel = jsonSeccion.tablaPadre.replace(
+          /_([a-z])/g,
+          (_: string, letra: string) => letra.toUpperCase()
+        );
+        console.log(
+          `📝 Tabla padre convertida a camelCase: ${tablaPadreCamel}`
+        );
+
+        const jsonPadre: any = await this.cargarJson(tablaPadreCamel);
+        console.log('📥 JSON de la tabla padre cargado:', jsonPadre);
+
+        if (!jsonPadre || !jsonPadre.secciones) {
+          console.error(
+            '❌ No se encontró la sección en el JSON padre.',
+            jsonPadre
+          );
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró la configuración de la tabla padre.',
+          });
+          return;
+        }
+
+        let sufijo = jsonSeccion.sufijo;
+        console.log(`🔎 Buscando sección con sufijo: ${sufijo}`);
+
+        let seccionPadre = jsonPadre.secciones.find(
+          (sec: any) => sec.nombre === sufijo
+        );
+
+        if (!seccionPadre) {
+          console.error(
+            `❌ No se encontró una sección en la tabla padre con sufijo: ${sufijo}`
+          );
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: `No se encontró una sección en la tabla padre con el sufijo: ${sufijo}`,
+          });
+          return;
+        }
+
+        campoIdPadre = seccionPadre.campoIdPadre;
+        if (!campoIdPadre) {
+          console.error('❌ No se encontró campoIdPadre en la sección padre.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró campoIdPadre en la tabla padre.',
+          });
+          return;
+        }
+
+        console.log(`🔑 Campo ID Padre obtenido: ${campoIdPadre}`);
+      }
+
+      seccion.campos.forEach((filaCampos: any) => {
+        filaCampos.forEach((campo: any) => {
+          if (
+            campo.visible &&
+            !campo.nombre.toLowerCase().startsWith('boton')
+          ) {
+            let campoTransformado = campo.nombre
+              .replace(/([a-z])([A-Z])/g, '$1_$2')
+              .replace(/_[A-Z]+$/, '')
+              .toLowerCase();
+            const key = this.mapeoSecciones[campo.titulo] || campoTransformado;
+            console.log(
+              `🔑 Campo "${campo.titulo || campoTransformado}" mapeado como:`,
+              key
+            );
+
+            let valor = campo.valorDefecto || '';
+
+            if (campo.tipo === 'date' && valor) {
+              valor = new Date(valor).toISOString().split('T')[0];
+            } else if (campo.tipo === 'datetime-local' && valor) {
+              valor = new Date(valor).toISOString().slice(0, 16);
+            }
+
+            if (key !== 'id') {
+              cambiosGuardados[key] = valor;
+            }
+          }
+        });
+      });
+
+      console.log('📤 Datos a guardar:', cambiosGuardados);
+
+      if (Object.keys(cambiosGuardados).length === 0) {
+        console.warn('⚠️ No hay cambios para guardar.');
+        Swal.fire({
+          icon: 'warning',
+          title: 'Sin cambios',
+          text: 'No se detectaron modificaciones en la sección.',
+        });
+        return;
+      }
+
+      try {
+        let consulta = '';
+
+        if (!idSeccion) {
+          cambiosGuardados[campoIdPadre] = this.idFilaSeleccionada;
+          const campos = Object.keys(cambiosGuardados).join(', ');
+          const valores = Object.values(cambiosGuardados)
+            .map((valor) => `'${valor}'`)
+            .join(', ');
+          consulta = `INSERT INTO ${jsonSeccion.tabla} (${campos}) VALUES (${valores});`;
+        } else {
+          const setQuery = Object.entries(cambiosGuardados)
+            .map(([campoBD, valor]) => `${campoBD} = '${valor}'`)
+            .join(', ');
+          consulta = `UPDATE ${jsonSeccion.tabla} SET ${setQuery} WHERE id = ${idSeccion};`;
+        }
+
+        console.log('📜 Ejecutando consulta SQL:', consulta);
+        const resultado = await this.obtenerData(consulta);
+        console.log('✅ Resultado de la consulta:', resultado);
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Guardado exitoso',
+          text: 'Los cambios en la sección han sido guardados correctamente.',
+        });
+
+        this.idFilaSeleccionadaSeccion = null;
+        this.datosSecciones.forEach((seccion) => {
+          seccion.campos.forEach((filaCampos: any) => {
+            filaCampos.forEach((campo: any) => {
+              if (campo.visible) {
+                campo.valorDefecto = '';
+              }
+            });
+          });
+        });
+
+        this.cdr.detectChanges();
+      } catch (error: any) {
+        console.error('❌ Error en obtenerData():', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error en la base de datos',
+          text: `No se pudo guardar la sección: ${error.message}`,
+        });
+        this.cdr.detectChanges();
+      }
+    } catch (error) {
+      console.error('❌ Error inesperado en guardarEMP:', error);
+    }
   }
-  eliminarEIM(valor: string) {
-    console.log('función eliminar EIM');
+  // <------------- Funciones para botones eliminar de las secciones ------------->
+  async eliminarEITM(index: number) {
+    try {
+      console.log(
+        '🗑️ Intentando eliminar fila en la sección con índice:',
+        index
+      );
+
+      let seccion = this.datosSecciones[index];
+
+      // 🔹 Buscar la sección en jsonMain para obtener el origen correcto
+      if (this.jsonMain.secciones?.length) {
+        for (let sec of this.jsonMain.secciones) {
+          if (sec.nombre === seccion.nombre) {
+            seccion.origen = sec.origen;
+            break;
+          }
+        }
+      }
+
+      if (!seccion) {
+        console.error('❌ No se encontró la sección activa.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se encontró la sección activa para eliminar la fila.',
+        });
+        return;
+      }
+
+      if (!this.idFilaSeleccionadaSeccion) {
+        console.warn('⚠️ No hay una fila seleccionada para eliminar.');
+        Swal.fire({
+          icon: 'warning',
+          title: 'Atención',
+          text: 'Debe seleccionar una fila antes de eliminar.',
+        });
+        return;
+      }
+
+      // 🔹 Cargar JSON de la sección después de obtener la información del `jsonMain`
+      const jsonSeccion: any = await this.cargarJson(seccion.origen);
+      console.log('📥 JSON de la sección cargado:', jsonSeccion);
+
+      if (!jsonSeccion || !jsonSeccion.tabla) {
+        console.error('❌ No se pudo obtener la configuración de la sección.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudo obtener la configuración de la sección.',
+        });
+        return;
+      }
+
+      // 🔥 Confirmación antes de eliminar
+      Swal.fire({
+        title: '¿Estás seguro?',
+        text: 'Esta acción no se puede deshacer.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          try {
+            console.log(
+              '🗑️ Eliminando fila con ID:',
+              this.idFilaSeleccionadaSeccion
+            );
+
+            // 🔹 Generar consulta SQL para eliminar
+            const consulta = `DELETE FROM ${jsonSeccion.tabla} WHERE id = ${this.idFilaSeleccionadaSeccion};`;
+            console.log('📜 Ejecutando consulta:', consulta);
+
+            await this.obtenerData(consulta);
+            console.log('✅ Fila eliminada correctamente');
+
+            Swal.fire({
+              icon: 'success',
+              title: 'Eliminado',
+              text: 'La fila ha sido eliminada correctamente.',
+            });
+
+            // 🔹 Actualizar la UI eliminando la fila de `gridInfo`
+            seccion.gridInfo = seccion.gridInfo.filter(
+              (fila: any) => fila.id !== this.idFilaSeleccionadaSeccion
+            );
+          } catch (error) {
+            console.error('❌ Error al eliminar la fila:', error);
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: 'No se pudo eliminar la fila. Inténtalo de nuevo.',
+            });
+          }
+        }
+
+        // 🔹 Limpiar selección y campos (ya sea por eliminación exitosa o cancelación)
+        this.idFilaSeleccionadaSeccion = null;
+        seccion.campos.forEach((filaCampos: any) => {
+          filaCampos.forEach((campo: any) => {
+            if (campo.visible) {
+              campo.valorDefecto = '';
+            }
+          });
+        });
+
+        this.cdr.detectChanges();
+      });
+    } catch (error) {
+      console.error('❌ Error inesperado en eliminarEITM:', error);
+    }
   }
 
-  eliminarEMP(valor: string) {
-    console.log('funcion eliminarEMP');
-  }
+  async eliminarEMP(index: number) {
+    try {
+      console.log(
+        '🗑️ Intentando eliminar fila en la sección con índice:',
+        index
+      );
 
-  calcularValorProductoEgreso() {
-    console.log('valorProductoEgrero calculado');
+      let seccion = this.datosSecciones[index];
+
+      // 🔹 Buscar la sección en jsonMain para obtener el origen correcto
+      if (this.jsonMain.secciones?.length) {
+        for (let sec of this.jsonMain.secciones) {
+          if (sec.nombre === seccion.nombre) {
+            seccion.origen = sec.origen;
+            break;
+          }
+        }
+      }
+
+      if (!seccion) {
+        console.error('❌ No se encontró la sección activa.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se encontró la sección activa para eliminar la fila.',
+        });
+        return;
+      }
+
+      if (!this.idFilaSeleccionadaSeccion) {
+        console.warn('⚠️ No hay una fila seleccionada para eliminar.');
+        Swal.fire({
+          icon: 'warning',
+          title: 'Atención',
+          text: 'Debe seleccionar una fila antes de eliminar.',
+        });
+        return;
+      }
+
+      // 🔹 Cargar JSON de la sección después de obtener la información del `jsonMain`
+      const jsonSeccion: any = await this.cargarJson(seccion.origen);
+      console.log('📥 JSON de la sección cargado:', jsonSeccion);
+
+      if (!jsonSeccion || !jsonSeccion.tabla) {
+        console.error('❌ No se pudo obtener la configuración de la sección.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudo obtener la configuración de la sección.',
+        });
+        return;
+      }
+
+      // 🔥 Confirmación antes de eliminar
+      Swal.fire({
+        title: '¿Estás seguro?',
+        text: 'Esta acción no se puede deshacer.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          try {
+            console.log(
+              '🗑️ Eliminando fila con ID:',
+              this.idFilaSeleccionadaSeccion
+            );
+
+            // 🔹 Generar consulta SQL para eliminar
+            const consulta = `DELETE FROM ${jsonSeccion.tabla} WHERE id = ${this.idFilaSeleccionadaSeccion};`;
+            console.log('📜 Ejecutando consulta:', consulta);
+
+            await this.obtenerData(consulta);
+            console.log('✅ Fila eliminada correctamente');
+
+            Swal.fire({
+              icon: 'success',
+              title: 'Eliminado',
+              text: 'La fila ha sido eliminada correctamente.',
+            });
+
+            // 🔹 Actualizar la UI eliminando la fila de `gridInfo`
+            seccion.gridInfo = seccion.gridInfo.filter(
+              (fila: any) => fila.id !== this.idFilaSeleccionadaSeccion
+            );
+          } catch (error) {
+            console.error('❌ Error al eliminar la fila:', error);
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: 'No se pudo eliminar la fila. Inténtalo de nuevo.',
+            });
+          }
+        }
+
+        // 🔹 Limpiar selección y campos (ya sea por eliminación exitosa o cancelación)
+        this.idFilaSeleccionadaSeccion = null;
+        seccion.campos.forEach((filaCampos: any) => {
+          filaCampos.forEach((campo: any) => {
+            if (campo.visible) {
+              campo.valorDefecto = '';
+            }
+          });
+        });
+
+        this.cdr.detectChanges();
+      });
+    } catch (error) {
+      console.error('❌ Error inesperado en eliminarEITM:', error);
+    }
   }
 }
