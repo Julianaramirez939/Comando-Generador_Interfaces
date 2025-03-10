@@ -441,103 +441,125 @@ export class JsonComponent implements OnInit {
 
         try {
           const dataPermisos: any = await this.obtenerData(consultaPermisos);
-          console.log(
-            'Resultado de la primera consulta (FORMULARIO):',
-            dataPermisos
-          );
+          console.log('Resultado de la primera consulta (FORMULARIO):', dataPermisos);
 
           if (dataPermisos.length > 0) {
-            const idsPermisos = dataPermisos
-              .map((permiso: any) => permiso.id_permiso)
-              .join(',');
+            const idsPermisos = dataPermisos.map((permiso: any) => permiso.id_permiso).join(',');
             let consultaBotones = `SELECT * FROM permiso WHERE id IN (${idsPermisos});`;
 
             const dataBotones: any = await this.obtenerData(consultaBotones);
-            console.log(
-              'Resultado de la segunda consulta (FORMULARIO):',
-              dataBotones
-            );
+            console.log('Resultado de la segunda consulta (FORMULARIO):', dataBotones);
 
             let botonesFiltrados;
             if (this.buscar) {
-              botonesFiltrados = dataBotones.filter(
-                (boton: any) => boton.id === 1 || boton.id === 2
-              );
+              botonesFiltrados = dataBotones.filter((boton: any) => boton.id === 1 || boton.id === 2);
             } else {
-              botonesFiltrados = dataBotones.filter(
-                (boton: any) => boton.id !== 1
-              );
+              botonesFiltrados = dataBotones.filter((boton: any) => boton.id !== 1);
             }
 
             opcionesMenu = botonesFiltrados.map((boton: any) => ({
               id: boton.id,
-              nombre: boton.id === 2 ? 'Nuevo' : boton.nombre,
+              nombre: boton.id === 3 ? 'Guardar' : boton.id === 2 ? 'Nuevo' : boton.nombre,
               onClick: async (event?: Event) => {
                 if (event) event.stopPropagation();
 
                 if (boton.id === 1) {
-                  // Botón "Consultar"
                   await this.realizarConsulta();
-
                   if (!this.datosGridMain || this.datosGridMain.length === 0) {
-                    console.log(
-                      '⚠️ No se encontraron registros. Manteniendo la vista actual.'
-                    );
+                    console.log('⚠️ No se encontraron registros. Manteniendo la vista actual.');
                     return;
                   }
-
                   this.mostrarListado = true;
                   this.mostrarFormulario = false;
                   this.buscar = false;
-
-                  this.botonesGeneradosFormulario =
-                    await this.generarBotonesFormulario(this.jsonMain);
+                  this.botonesGeneradosFormulario = await this.generarBotonesFormulario(this.jsonMain);
                   this.cdr.detectChanges();
                 } else if (boton.id === 2) {
-                  // Botón "Nuevo"
                   this.buscar = false;
                   this.mostrarListado = false;
                   this.mostrarFormulario = true;
-
                   this.datosSecciones = [];
                   await this.seleccionarFila(null);
-
-                  this.botonesGeneradosFormulario =
-                    await this.generarBotonesFormulario(this.jsonMain);
+                  this.botonesGeneradosFormulario = await this.generarBotonesFormulario(this.jsonMain);
                   this.cdr.detectChanges();
                 } else if (boton.id === 3) {
-                  // Botón "Modificar"
-
                   await this.modificarFormulario();
-
                   Swal.fire({
                     icon: 'success',
                     title: 'Formulario Modificado',
                     text: 'Los cambios han sido guardados exitosamente.',
                     confirmButtonText: 'OK',
                   });
-
                   this.cdr.detectChanges();
+                } else {
+                  console.log(`🔘 Botón ${boton.nombre} presionado.`);
                 }
               },
             }));
 
             this.botonesGeneradosFormulario = opcionesMenu;
-            console.log(
-              '✅ Botones generados en FORMULARIO:',
-              this.botonesGeneradosFormulario
-            );
+            console.log('✅ Botones generados en FORMULARIO:', this.botonesGeneradosFormulario);
           }
         } catch (error) {
-          console.error(' Error al obtener los botones (FORMULARIO):', error);
+          console.error('❌ Error al obtener los botones (FORMULARIO):', error);
         }
       } else {
-        console.log('Existen botones en FORMULARIO. No se realiza consulta.');
+        console.log('Existen botones en FORMULARIO. Validando estructura...');
+
+        let botonesNumericos: number[] = [];
+        let botonesPersonalizados: any[] = [];
+
+        json.seccionesBody.formulario.botones.forEach((boton: any) => {
+          if (typeof boton === 'string' && boton.includes('|')) {
+            const [id, nombre, metodo] = boton.split('|');
+            botonesPersonalizados.push({
+              id: parseInt(id, 10),
+              nombre: nombre,
+              onClick: async (event?: Event) => {
+                if (event) event.stopPropagation();
+                const metodoFuncion = (this as any)[metodo];
+                if (typeof metodoFuncion === 'function') {
+                  await metodoFuncion();
+                }
+              },
+            });
+          } else {
+            botonesNumericos.push(parseInt(boton, 10));
+          }
+        });
+
+        if (botonesNumericos.length > 0) {
+          let consultaBotones = `SELECT * FROM permiso WHERE id IN (${botonesNumericos.join(',')});`;
+
+          try {
+            const dataBotones: any = await this.obtenerData(consultaBotones);
+            console.log('🎯 Botones numéricos obtenidos:', dataBotones);
+
+            const botonesDesdeBD = dataBotones.map((boton: any) => ({
+              id: boton.id,
+              nombre: boton.id === 3 ? 'Guardar' : boton.id === 2 ? 'Nuevo' : boton.nombre,
+              onClick: async (event?: Event) => {
+                if (event) event.stopPropagation();
+                console.log(`🔘 Botón ${boton.nombre} presionado.`);
+              },
+            }));
+
+            opcionesMenu = [...botonesDesdeBD, ...botonesPersonalizados];
+          } catch (error) {
+            console.error('❌ Error al obtener botones numéricos:', error);
+          }
+        } else {
+          opcionesMenu = [...botonesPersonalizados];
+        }
+
+        this.botonesGeneradosFormulario = opcionesMenu;
       }
     }
 
     return opcionesMenu;
-  }
+}
+
+
 
   async generarBotonesListado(json: any) {
     let opcionesMenu: any[] = [];
@@ -992,24 +1014,13 @@ export class JsonComponent implements OnInit {
       this.cdr.detectChanges();
     }
   }
-// <------------- Función que ejecuta el boton modificar del formulario y el del listado------------->
+  // <------------- Función que ejecuta el boton modificar del formulario y el del listado------------->
   async modificarFormulario() {
     try {
       const cambiosGuardados: { [key: string]: any } = {};
 
       if (!this.camposMain) {
         console.error('❌ Error: this.camposMain no está definido.');
-        return;
-      }
-
-      if (this.idFilaSeleccionada === null) {
-        console.error('❌ Error: No hay fila seleccionada para modificar.');
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Debe seleccionar una fila antes de modificar.',
-          confirmButtonText: 'OK',
-        });
         return;
       }
 
@@ -1092,22 +1103,36 @@ export class JsonComponent implements OnInit {
         return;
       }
 
-      // 🔹 Generar la consulta de actualización
-      const actualizaciones = Object.entries(cambiosGuardados)
-        .map(([campoBD, valor]) => `${campoBD} = '${valor}'`)
-        .join(', ');
-
-      const consulta = `UPDATE ${this.jsonMain.tabla} SET ${actualizaciones} WHERE id = '${this.idFilaSeleccionada}';`;
-
-      console.log('✏️ Consulta de actualización generada:', consulta);
+      let consulta = '';
+      if (this.idFilaSeleccionada === null) {
+        // 🔹 Generar la consulta de inserción
+        const columnas = Object.keys(cambiosGuardados).join(', ');
+        const valores = Object.values(cambiosGuardados)
+          .map((valor) => `'${valor}'`)
+          .join(', ');
+        consulta = `INSERT INTO ${this.jsonMain.tabla} (${columnas}) VALUES (${valores});`;
+        console.log('🆕 Consulta de inserción generada:', consulta);
+      } else {
+        // 🔹 Generar la consulta de actualización
+        const actualizaciones = Object.entries(cambiosGuardados)
+          .map(([campoBD, valor]) => `${campoBD} = '${valor}'`)
+          .join(', ');
+        consulta = `UPDATE ${this.jsonMain.tabla} SET ${actualizaciones} WHERE id = '${this.idFilaSeleccionada}';`;
+        console.log('✏️ Consulta de actualización generada:', consulta);
+      }
 
       // 🔹 Ejecutar la consulta
       const resultado = await this.obtenerData(consulta);
 
       Swal.fire({
         icon: 'success',
-        title: 'Modificación exitosa',
-        text: 'El formulario se ha actualizado correctamente.',
+        title:
+          this.idFilaSeleccionada === null
+            ? 'Inserción exitosa'
+            : 'Modificación exitosa',
+        text: `El formulario se ha ${
+          this.idFilaSeleccionada === null ? 'insertado' : 'actualizado'
+        } correctamente.`,
         confirmButtonText: 'OK',
       });
 
@@ -1117,8 +1142,8 @@ export class JsonComponent implements OnInit {
 
       Swal.fire({
         icon: 'error',
-        title: 'Error en la modificación',
-        text: 'Ocurrió un error al actualizar el formulario.',
+        title: 'Error en la operación',
+        text: 'Ocurrió un error al procesar el formulario.',
         confirmButtonText: 'Aceptar',
       });
 
@@ -1149,8 +1174,7 @@ export class JsonComponent implements OnInit {
     return txt.value;
   }
 
-  ejecutarAccion(accion: string) {
-  }
+  ejecutarAccion(accion: string) {}
 
   // <------------- Funciones para ejecutar botones guardar y eliminar de las secciones ------------->
   accionSeccionEliminar(accion: string, OBJ: any, index: number) {
@@ -1507,6 +1531,218 @@ export class JsonComponent implements OnInit {
   }
 
   async guardarEITM(OBJ: any, index: number) {
+    try {
+      console.log('📌 Objeto recibido en guardarEMP:', OBJ);
+
+      let seccion = this.datosSecciones[index];
+
+      if (this.jsonMain.secciones?.length) {
+        for (let sec of this.jsonMain.secciones) {
+          if (sec.nombre === seccion.nombre) {
+            seccion.origen = sec.origen;
+            break;
+          }
+        }
+      }
+
+      if (!seccion) {
+        console.error('❌ No se encontró la sección activa.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se encontró la sección activa para guardar los datos.',
+        });
+        return;
+      }
+
+      const jsonSeccion: any = await this.cargarJson(seccion.origen);
+      console.log('📥 JSON de la sección cargado:', jsonSeccion);
+
+      if (!jsonSeccion || !jsonSeccion.tabla) {
+        console.error(
+          '❌ No se pudo obtener la configuración de la sección.',
+          jsonSeccion
+        );
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudo obtener la configuración de la sección.',
+        });
+        return;
+      }
+
+      let cambiosGuardados: { [key: string]: any } = {};
+      let idSeccion: number | null = this.idFilaSeleccionadaSeccion;
+      let campoIdPadre = '';
+
+      if (!idSeccion) {
+        console.warn('⚠️ No hay fila seleccionada, se realizará un INSERT.');
+
+        if (!jsonSeccion.tablaPadre) {
+          console.error('❌ No se encontró tablaPadre en el JSON.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró tablaPadre en la configuración.',
+          });
+          return;
+        }
+
+        let tablaPadreCamel = jsonSeccion.tablaPadre.replace(
+          /_([a-z])/g,
+          (_: string, letra: string) => letra.toUpperCase()
+        );
+        console.log(
+          `📝 Tabla padre convertida a camelCase: ${tablaPadreCamel}`
+        );
+
+        const jsonPadre: any = await this.cargarJson(tablaPadreCamel);
+        console.log('📥 JSON de la tabla padre cargado:', jsonPadre);
+
+        if (!jsonPadre || !jsonPadre.secciones) {
+          console.error(
+            '❌ No se encontró la sección en el JSON padre.',
+            jsonPadre
+          );
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró la configuración de la tabla padre.',
+          });
+          return;
+        }
+
+        let sufijo = jsonSeccion.sufijo;
+        console.log(`🔎 Buscando sección con sufijo: ${sufijo}`);
+
+        let seccionPadre = jsonPadre.secciones.find(
+          (sec: any) => sec.nombre === sufijo
+        );
+
+        if (!seccionPadre) {
+          console.error(
+            `❌ No se encontró una sección en la tabla padre con sufijo: ${sufijo}`
+          );
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: `No se encontró una sección en la tabla padre con el sufijo: ${sufijo}`,
+          });
+          return;
+        }
+
+        campoIdPadre = seccionPadre.campoIdPadre;
+        if (!campoIdPadre) {
+          console.error('❌ No se encontró campoIdPadre en la sección padre.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró campoIdPadre en la tabla padre.',
+          });
+          return;
+        }
+
+        console.log(`🔑 Campo ID Padre obtenido: ${campoIdPadre}`);
+      }
+
+      seccion.campos.forEach((filaCampos: any) => {
+        filaCampos.forEach((campo: any) => {
+          if (
+            campo.visible &&
+            !campo.nombre.toLowerCase().startsWith('boton')
+          ) {
+            let campoTransformado = campo.nombre
+              .replace(/([a-z])([A-Z])/g, '$1_$2')
+              .replace(/_[A-Z]+$/, '')
+              .toLowerCase();
+            const key = this.mapeoSecciones[campo.titulo] || campoTransformado;
+            console.log(
+              `🔑 Campo "${campo.titulo || campoTransformado}" mapeado como:`,
+              key
+            );
+
+            let valor = campo.valorDefecto || '';
+
+            if (campo.tipo === 'date' && valor) {
+              valor = new Date(valor).toISOString().split('T')[0];
+            } else if (campo.tipo === 'datetime-local' && valor) {
+              valor = new Date(valor).toISOString().slice(0, 16);
+            }
+
+            if (key !== 'id') {
+              cambiosGuardados[key] = valor;
+            }
+          }
+        });
+      });
+
+      console.log('📤 Datos a guardar:', cambiosGuardados);
+
+      if (Object.keys(cambiosGuardados).length === 0) {
+        console.warn('⚠️ No hay cambios para guardar.');
+        Swal.fire({
+          icon: 'warning',
+          title: 'Sin cambios',
+          text: 'No se detectaron modificaciones en la sección.',
+        });
+        return;
+      }
+
+      try {
+        let consulta = '';
+
+        if (!idSeccion) {
+          cambiosGuardados[campoIdPadre] = this.idFilaSeleccionada;
+          const campos = Object.keys(cambiosGuardados).join(', ');
+          const valores = Object.values(cambiosGuardados)
+            .map((valor) => `'${valor}'`)
+            .join(', ');
+          consulta = `INSERT INTO ${jsonSeccion.tabla} (${campos}) VALUES (${valores});`;
+        } else {
+          const setQuery = Object.entries(cambiosGuardados)
+            .map(([campoBD, valor]) => `${campoBD} = '${valor}'`)
+            .join(', ');
+          consulta = `UPDATE ${jsonSeccion.tabla} SET ${setQuery} WHERE id = ${idSeccion};`;
+        }
+
+        console.log('📜 Ejecutando consulta SQL:', consulta);
+        const resultado = await this.obtenerData(consulta);
+        console.log('✅ Resultado de la consulta:', resultado);
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Guardado exitoso',
+          text: 'Los cambios en la sección han sido guardados correctamente.',
+        });
+
+        this.idFilaSeleccionadaSeccion = null;
+        this.datosSecciones.forEach((seccion) => {
+          seccion.campos.forEach((filaCampos: any) => {
+            filaCampos.forEach((campo: any) => {
+              if (campo.visible) {
+                campo.valorDefecto = '';
+              }
+            });
+          });
+        });
+
+        this.cdr.detectChanges();
+      } catch (error: any) {
+        console.error('❌ Error en obtenerData():', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error en la base de datos',
+          text: `No se pudo guardar la sección: ${error.message}`,
+        });
+        this.cdr.detectChanges();
+      }
+    } catch (error) {
+      console.error('❌ Error inesperado en guardarEMP:', error);
+    }
+  }
+
+  
+  async guardarEDE(OBJ: any, index: number) {
     try {
       console.log('📌 Objeto recibido en guardarEMP:', OBJ);
 
