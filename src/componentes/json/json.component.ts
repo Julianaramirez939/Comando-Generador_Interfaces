@@ -317,12 +317,12 @@ export class JsonComponent implements OnInit {
     Object.values(this.camposMain).forEach((filaCampos: any) => {
       filaCampos.forEach((campo: any) => {
         let campoTransformado = campo.nombre
-          .replace(/([a-z])([A-Z])/g, '$1_$2')
-          .replace(/_[A-Z]+$/, '')
+          .replace(/([a-z])([A-Z])/g, '$1_$2') // Inserta guion bajo antes de una mayúscula después de minúscula
+          .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2') // Inserta guion bajo entre dos mayúsculas si la segunda va seguida de una minúscula
           .toLowerCase();
 
         const key = this.mapeoColumnas[campo.titulo] || campoTransformado;
-
+        console.log('campo transformado', campoTransformado);
         let valor = fila[key];
 
         if (valor && typeof valor === 'string' && valor.includes('T')) {
@@ -441,38 +441,58 @@ export class JsonComponent implements OnInit {
 
         try {
           const dataPermisos: any = await this.obtenerData(consultaPermisos);
-          console.log('Resultado de la primera consulta (FORMULARIO):', dataPermisos);
+          console.log(
+            'Resultado de la primera consulta (FORMULARIO):',
+            dataPermisos
+          );
 
           if (dataPermisos.length > 0) {
-            const idsPermisos = dataPermisos.map((permiso: any) => permiso.id_permiso).join(',');
+            const idsPermisos = dataPermisos
+              .map((permiso: any) => permiso.id_permiso)
+              .join(',');
             let consultaBotones = `SELECT * FROM permiso WHERE id IN (${idsPermisos});`;
 
             const dataBotones: any = await this.obtenerData(consultaBotones);
-            console.log('Resultado de la segunda consulta (FORMULARIO):', dataBotones);
+            console.log(
+              'Resultado de la segunda consulta (FORMULARIO):',
+              dataBotones
+            );
 
             let botonesFiltrados;
             if (this.buscar) {
-              botonesFiltrados = dataBotones.filter((boton: any) => boton.id === 1 || boton.id === 2);
+              botonesFiltrados = dataBotones.filter(
+                (boton: any) => boton.id === 1 || boton.id === 2
+              );
             } else {
-              botonesFiltrados = dataBotones.filter((boton: any) => boton.id !== 1);
+              botonesFiltrados = dataBotones.filter(
+                (boton: any) => boton.id !== 1
+              );
             }
 
             opcionesMenu = botonesFiltrados.map((boton: any) => ({
               id: boton.id,
-              nombre: boton.id === 3 ? 'Guardar' : boton.id === 2 ? 'Nuevo' : boton.nombre,
+              nombre:
+                boton.id === 3
+                  ? 'Guardar'
+                  : boton.id === 2
+                  ? 'Nuevo'
+                  : boton.nombre,
               onClick: async (event?: Event) => {
                 if (event) event.stopPropagation();
 
                 if (boton.id === 1) {
                   await this.realizarConsulta();
                   if (!this.datosGridMain || this.datosGridMain.length === 0) {
-                    console.log('⚠️ No se encontraron registros. Manteniendo la vista actual.');
+                    console.log(
+                      '⚠️ No se encontraron registros. Manteniendo la vista actual.'
+                    );
                     return;
                   }
                   this.mostrarListado = true;
                   this.mostrarFormulario = false;
                   this.buscar = false;
-                  this.botonesGeneradosFormulario = await this.generarBotonesFormulario(this.jsonMain);
+                  this.botonesGeneradosFormulario =
+                    await this.generarBotonesFormulario(this.jsonMain);
                   this.cdr.detectChanges();
                 } else if (boton.id === 2) {
                   this.buscar = false;
@@ -480,7 +500,130 @@ export class JsonComponent implements OnInit {
                   this.mostrarFormulario = true;
                   this.datosSecciones = [];
                   await this.seleccionarFila(null);
-                  this.botonesGeneradosFormulario = await this.generarBotonesFormulario(this.jsonMain);
+                  this.botonesGeneradosFormulario =
+                    await this.generarBotonesFormulario(this.jsonMain);
+                  this.cdr.detectChanges();
+                } else if (boton.id === 3) {
+                  await this.modificarFormulario();
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Formulario Modificado',
+                    text: 'Los cambios han sido guardados exitosamente.',
+                    confirmButtonText: 'OK',
+                  });
+                  this.cdr.detectChanges();
+                } else if (boton.id >= 4 && boton.id <= 14) {
+                  await this.ejecutarAccion(boton.nombre); // 🔥 Ejecuta la acción si el ID está entre 4 y 14
+                } else {
+                  console.log(`🔘 Botón ${boton.nombre} presionado.`);
+                }
+              },
+            }));
+
+            this.botonesGeneradosFormulario = opcionesMenu;
+            console.log(
+              '✅ Botones generados en FORMULARIO:',
+              this.botonesGeneradosFormulario
+            );
+          }
+        } catch (error) {
+          console.error('❌ Error al obtener los botones (FORMULARIO):', error);
+        }
+      } else {
+        console.log('Existen botones en FORMULARIO. Validando estructura...');
+
+        let botonesNumericos: number[] = [];
+        let botonesPersonalizados: any[] = [];
+
+        json.seccionesBody.formulario.botones.forEach((boton: any) => {
+          if (typeof boton === 'string' && boton.includes('|')) {
+            const [id, nombre, metodo] = boton.split('|');
+            const metodoLimpio = metodo.replace(/\(\)$/, ''); // Eliminar paréntesis al final
+
+            botonesPersonalizados.push({
+              id: parseInt(id, 10),
+              nombre: nombre,
+              onClick: async (event?: Event) => {
+                if (event) event.stopPropagation();
+
+                const metodoFuncion = (this as any)[metodoLimpio];
+
+                if (typeof metodoFuncion === 'function') {
+                  await metodoFuncion();
+                } else {
+                  console.warn(
+                    `⚠️ El método "${metodoLimpio}" no existe en el contexto actual.`
+                  );
+                  Swal.fire({
+                    icon: 'error',
+                    title: 'Método no encontrado',
+                    text: `El método "${metodoLimpio}" no existe o no está definido.`,
+                    confirmButtonText: 'OK',
+                  });
+                }
+              },
+            });
+          } else {
+            botonesNumericos.push(parseInt(boton, 10));
+          }
+        });
+
+        if (botonesNumericos.length > 0) {
+          let consultaBotones = `SELECT * FROM permiso WHERE id IN (${botonesNumericos.join(
+            ','
+          )});`;
+
+          try {
+            const dataBotones: any = await this.obtenerData(consultaBotones);
+            console.log('🎯 Botones numéricos obtenidos:', dataBotones);
+
+            let botonesFiltrados;
+
+            if (this.buscar) {
+              // Si buscar es true, solo permitir los botones con ID 1 y 2
+              botonesFiltrados = dataBotones.filter(
+                (boton: any) => boton.id === 1 || boton.id === 2
+              );
+            } else {
+              // Si buscar es false, aplicar la lógica de exclusión del botón 1
+              botonesFiltrados = dataBotones.filter(
+                (boton: any) => boton.id !== 1
+              );
+            }
+
+            const botonesDesdeBD = botonesFiltrados.map((boton: any) => ({
+              id: boton.id,
+              nombre:
+                boton.id === 3
+                  ? 'Guardar'
+                  : boton.id === 2
+                  ? 'Nuevo'
+                  : boton.nombre,
+              onClick: async (event?: Event) => {
+                if (event) event.stopPropagation();
+
+                if (boton.id === 1) {
+                  await this.realizarConsulta();
+                  if (!this.datosGridMain || this.datosGridMain.length === 0) {
+                    console.log(
+                      '⚠️ No se encontraron registros. Manteniendo la vista actual.'
+                    );
+                    return;
+                  }
+                  this.mostrarListado = true;
+                  this.mostrarFormulario = false;
+                  this.buscar = false;
+                  this.botonesGeneradosFormulario =
+                    await this.generarBotonesFormulario(this.jsonMain);
+                  this.cdr.detectChanges();
+                } else if (boton.id === 2) {
+                  this.buscar = false;
+                  this.mostrarListado = false;
+                  this.mostrarFormulario = true;
+                  this.datosSecciones = [];
+                  await this.seleccionarFila(null);
+                  this.botonesGeneradosFormulario =
+                    await this.generarBotonesFormulario(this.jsonMain);
                   this.cdr.detectChanges();
                 } else if (boton.id === 3) {
                   await this.modificarFormulario();
@@ -497,59 +640,16 @@ export class JsonComponent implements OnInit {
               },
             }));
 
-            this.botonesGeneradosFormulario = opcionesMenu;
-            console.log('✅ Botones generados en FORMULARIO:', this.botonesGeneradosFormulario);
-          }
-        } catch (error) {
-          console.error('❌ Error al obtener los botones (FORMULARIO):', error);
-        }
-      } else {
-        console.log('Existen botones en FORMULARIO. Validando estructura...');
-
-        let botonesNumericos: number[] = [];
-        let botonesPersonalizados: any[] = [];
-
-        json.seccionesBody.formulario.botones.forEach((boton: any) => {
-          if (typeof boton === 'string' && boton.includes('|')) {
-            const [id, nombre, metodo] = boton.split('|');
-            botonesPersonalizados.push({
-              id: parseInt(id, 10),
-              nombre: nombre,
-              onClick: async (event?: Event) => {
-                if (event) event.stopPropagation();
-                const metodoFuncion = (this as any)[metodo];
-                if (typeof metodoFuncion === 'function') {
-                  await metodoFuncion();
-                }
-              },
-            });
-          } else {
-            botonesNumericos.push(parseInt(boton, 10));
-          }
-        });
-
-        if (botonesNumericos.length > 0) {
-          let consultaBotones = `SELECT * FROM permiso WHERE id IN (${botonesNumericos.join(',')});`;
-
-          try {
-            const dataBotones: any = await this.obtenerData(consultaBotones);
-            console.log('🎯 Botones numéricos obtenidos:', dataBotones);
-
-            const botonesDesdeBD = dataBotones.map((boton: any) => ({
-              id: boton.id,
-              nombre: boton.id === 3 ? 'Guardar' : boton.id === 2 ? 'Nuevo' : boton.nombre,
-              onClick: async (event?: Event) => {
-                if (event) event.stopPropagation();
-                console.log(`🔘 Botón ${boton.nombre} presionado.`);
-              },
-            }));
-
-            opcionesMenu = [...botonesDesdeBD, ...botonesPersonalizados];
+            // Si buscar es true, no incluir botones personalizados
+            opcionesMenu = this.buscar
+              ? botonesDesdeBD
+              : [...botonesDesdeBD, ...botonesPersonalizados];
           } catch (error) {
             console.error('❌ Error al obtener botones numéricos:', error);
           }
         } else {
-          opcionesMenu = [...botonesPersonalizados];
+          // Si buscar es true, eliminar cualquier botón personalizado
+          opcionesMenu = this.buscar ? [] : [...botonesPersonalizados];
         }
 
         this.botonesGeneradosFormulario = opcionesMenu;
@@ -557,9 +657,7 @@ export class JsonComponent implements OnInit {
     }
 
     return opcionesMenu;
-}
-
-
+  }
 
   async generarBotonesListado(json: any) {
     let opcionesMenu: any[] = [];
@@ -675,7 +773,72 @@ export class JsonComponent implements OnInit {
           console.error('Error al obtener los botones (LISTADO):', error);
         }
       } else {
-        console.log('Existen botones en LISTADO. No se realiza consulta.');
+        console.log('Existen botones en LISTADO. Procesando...');
+
+        let botonesNumericos: number[] = [];
+        let botonesPersonalizados: any[] = [];
+
+        json.seccionesBody.listado.botones.forEach((boton: any) => {
+          if (typeof boton === 'string' && boton.includes('|')) {
+            const [id, nombre, metodo] = boton.split('|');
+            const metodoLimpio = metodo.replace(/\(\)$/, '');
+
+            botonesPersonalizados.push({
+              id: parseInt(id, 10),
+              nombre: nombre,
+              onClick: async (event?: Event) => {
+                if (event) event.stopPropagation();
+
+                const metodoFuncion = (this as any)[metodoLimpio];
+
+                if (typeof metodoFuncion === 'function') {
+                  await metodoFuncion();
+                } else {
+                  console.warn(
+                    `⚠️ El método "${metodoLimpio}" no existe en el contexto actual.`
+                  );
+                  Swal.fire({
+                    icon: 'error',
+                    title: 'Método no encontrado',
+                    text: `El método "${metodoLimpio}" no existe o no está definido.`,
+                    confirmButtonText: 'OK',
+                  });
+                }
+              },
+            });
+          } else {
+            botonesNumericos.push(parseInt(boton, 10));
+          }
+        });
+
+        if (botonesNumericos.length > 0) {
+          let consultaBotones = `SELECT * FROM permiso WHERE id IN (${botonesNumericos.join(
+            ','
+          )});`;
+
+          try {
+            const dataBotones: any = await this.obtenerData(consultaBotones);
+            console.log('🎯 Botones numéricos obtenidos:', dataBotones);
+
+            const botonesDesdeBD = dataBotones.map((boton: any) => ({
+              id: boton.id,
+              nombre: boton.id === 2 ? 'Nuevo' : boton.nombre,
+              onClick: (event?: Event) => {
+                if (event) event.stopPropagation();
+                console.log(`Botón presionado: ${boton.nombre}`);
+                this.ejecutarAccion(boton.nombre);
+              },
+            }));
+
+            opcionesMenu = [...botonesDesdeBD, ...botonesPersonalizados];
+          } catch (error) {
+            console.error('❌ Error al obtener botones numéricos:', error);
+          }
+        } else {
+          opcionesMenu = [...botonesPersonalizados];
+        }
+
+        this.botonesGeneradosListado = opcionesMenu;
       }
     }
 
@@ -1150,6 +1313,22 @@ export class JsonComponent implements OnInit {
       this.cdr.detectChanges();
     }
   }
+  // <------------- Función que ejecuta el boton liquidar del formulario------------->
+  async liquidarEgreso() {
+    console.log('LIQUIDADO');
+  }
+  // <------------- Función que ejecuta el boton imprimir del formulario------------->
+  async imprimirEgreso() {
+    console.log('IMPRIMIR');
+  }
+  // <------------- Función que ejecuta el boton envio Dian del formulario------------->
+  async generarDocumentoSoporteElectronico() {
+    console.log('ENVIO DIAN');
+  }
+  // <------------- Función que ejecuta el boton Contabilizar del formulario------------->
+  async contabilizarDocumentoSoporte() {
+    console.log('CONTABILIZADO');
+  }
 
   formatearFecha(fecha: string): string {
     const date = new Date(fecha);
@@ -1174,7 +1353,9 @@ export class JsonComponent implements OnInit {
     return txt.value;
   }
 
-  ejecutarAccion(accion: string) {}
+  ejecutarAccion(accion: string) {
+    console.log(`🔘 Botón ejecutado sin función aún: ${accion}`);
+  }
 
   // <------------- Funciones para ejecutar botones guardar y eliminar de las secciones ------------->
   accionSeccionEliminar(accion: string, OBJ: any, index: number) {
@@ -1741,7 +1922,6 @@ export class JsonComponent implements OnInit {
     }
   }
 
-  
   async guardarEDE(OBJ: any, index: number) {
     try {
       console.log('📌 Objeto recibido en guardarEMP:', OBJ);
