@@ -426,7 +426,6 @@ export class JsonComponent implements OnInit {
 
     this.cdr.detectChanges();
   }
-
   async generarBotonesFormulario(json: any) {
     let opcionesMenu: any[] = [];
 
@@ -512,8 +511,10 @@ export class JsonComponent implements OnInit {
                     confirmButtonText: 'OK',
                   });
                   this.cdr.detectChanges();
-                } else if (boton.id >= 4 && boton.id <= 14) {
-                  await this.ejecutarAccion(boton.nombre); // 🔥 Ejecuta la acción si el ID está entre 4 y 14
+                } else if (boton.id === 4) {
+                  await this.eliminar(); // 🔥 Se agregó la ejecución del método eliminar()
+                } else if (boton.id >= 5 && boton.id <= 14) {
+                  await this.ejecutarAccion(boton.nombre); // 🔥 Ejecuta la acción si el ID está entre 5 y 14
                 } else {
                   console.log(`🔘 Botón ${boton.nombre} presionado.`);
                 }
@@ -634,6 +635,8 @@ export class JsonComponent implements OnInit {
                     confirmButtonText: 'OK',
                   });
                   this.cdr.detectChanges();
+                } else if (boton.id === 4) {
+                  await this.eliminar();
                 } else {
                   console.log(`🔘 Botón ${boton.nombre} presionado.`);
                 }
@@ -1328,6 +1331,81 @@ export class JsonComponent implements OnInit {
   // <------------- Función que ejecuta el boton Contabilizar del formulario------------->
   async contabilizarDocumentoSoporte() {
     console.log('CONTABILIZADO');
+  }
+  // <------------- Función que ejecuta el boton Eliminar del formulario------------->
+  async eliminar() {
+    try {
+      if (!this.idFilaSeleccionada) {
+        console.warn('⚠️ No hay una fila seleccionada para eliminar.');
+        Swal.fire({
+          icon: 'warning',
+          title: 'Atención',
+          text: 'Debes seleccionar un registro antes de eliminar.',
+          confirmButtonText: 'OK',
+        });
+        return;
+      }
+
+      console.log(
+        '🗑️ Registro seleccionado para eliminar:',
+        this.idFilaSeleccionada
+      );
+
+      // 🔹 Preguntar confirmación antes de eliminar
+      const resultado = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: 'Esta acción eliminará el registro seleccionado permanentemente.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+      });
+
+      // 🔹 Si el usuario cancela, no hacer nada
+      if (!resultado.isConfirmed) {
+        console.log('❌ Eliminación cancelada por el usuario.');
+        return;
+      }
+
+      console.log('🗑️ Eliminando registro con ID:', this.idFilaSeleccionada);
+
+      // 🔹 Construir y ejecutar la consulta de eliminación
+      const consultaEliminar = `DELETE FROM ${this.jsonMain.tabla} WHERE id = ${this.idFilaSeleccionada};`;
+      console.log('📌 Consulta generada:', consultaEliminar);
+
+      await this.obtenerData(consultaEliminar);
+
+      // 🔹 Mensaje de éxito
+      Swal.fire({
+        icon: 'success',
+        title: 'Registro eliminado',
+        text: 'El registro ha sido eliminado exitosamente.',
+        confirmButtonText: 'OK',
+      });
+
+      // 🔹 Limpiar los campos y resetear la selección
+      this.idFilaSeleccionada = null;
+      this.datosSecciones = [];
+      await this.seleccionarFila(null);
+
+      // 🔹 Regenerar los botones
+      this.botonesGeneradosFormulario = await this.generarBotonesFormulario(
+        this.jsonMain
+      );
+
+      // 🔹 Aplicar cambios en la UI
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('❌ Error al eliminar el registro:', error);
+
+      // 🔹 Mostrar alerta de error
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Ocurrió un problema al intentar eliminar el registro.',
+        confirmButtonText: 'OK',
+      });
+    }
   }
 
   formatearFecha(fecha: string): string {
