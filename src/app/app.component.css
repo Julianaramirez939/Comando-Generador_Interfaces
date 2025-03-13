@@ -36,7 +36,7 @@
   padding-right: 10px; /* 🔹 Evita que el scroll tape contenido */
 }
 
-
+/* 🔹 Contenedor del submenú con scroll si es necesario */
 .submenu-container {
   display: flex;
   flex-direction: column;
@@ -44,7 +44,10 @@
   margin-top: 5px;
   padding-left: 15px;
   padding-right: 5px; 
+  
 }
+
+
 
 /* 🔹 Botón del menú principal */
 .menu-button {
@@ -63,10 +66,11 @@
   border-radius: 15px;
   transition: background 0.3s ease;
   gap: 10px;
-  margin-bottom: 10px; 
+  margin-bottom: 10px; /* ✅ Agrega espacio entre los botones */
+}
 
 .menu-button:hover {
-  background-color: #003366;
+  background-color: #003366; /* Azul más oscuro en hover */
 }
 
 /* 🔹 Botón de las subopciones */
@@ -80,12 +84,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 220px; /* Tamaño fijo en ancho */
-  height: 50px; /* Tamaño fijo en alto */
+  width: 220px; 
+  height: 50px; 
   border: none;
   cursor: pointer;
   transition: background 0.3s ease;
-  white-space: normal;
+  white-space: normal; 
   word-wrap: break-word; 
   text-align: center;
   overflow-wrap: break-word; 
@@ -107,8 +111,8 @@
   align-items: center;
   padding: 15px 0;
   margin-top: auto; 
-  width: 100%;
-  text-align: center;
+  width: 100%; 
+  text-align: center; 
 }
 
 #imgLogo {
@@ -118,8 +122,8 @@
 }
 .button-container {
   display: flex;
-  gap: 1px; /* Espacio entre botones */
-  justify-content: flex-end; /* Alinea los botones a la derecha */
+  gap: 0px; 
+  justify-content: flex-end; 
 }
 .interfaz-container{
   height: 90%;
