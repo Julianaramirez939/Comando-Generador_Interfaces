@@ -1,3 +1,8 @@
+.json-app-container, .app-json-listado, .app-json-formulario{
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
 /* Contenedor de filas */
 .fila {
   display: flex;
@@ -120,8 +125,9 @@ i {
   padding: 8px; /* Para que el contenido no quede pegado al borde */
   text-align: center; /* Centrado del contenido */
 }
-.filaspares tbody tr:nth-child(even) {
-  background-color: #d1cccc; /* Gris claro */
+
+.filaspares tbody  tr:nth-child(even) {
+  background-color: #bfbfbf; /* Gris claro */
 }
 .botones-container {
   display: flex;
@@ -178,28 +184,27 @@ i {
 }
 
 /* Encabezado de la tabla (fijo en la parte superior) */
-.tabla-debug thead {
-  position: sticky;
-  top: 0; /* Se mantiene en la parte superior */
-  background-color: #a5a5a5; /* Color de fondo azul */
-  color: rgb(0, 0, 0); /* Letras blancas */
-  z-index: 10; /* Asegura que se mantenga por encima del contenido */
-}
+  .tabla-debug thead {
+    position: sticky;
+    top: 0; /* Se mantiene en la parte superior */
+    background-color:#003366; /* Color de fondo azul */
+    color: rgb(255, 255, 255); /* Letras blancas */
+    z-index: 10; /* Asegura que se mantenga por encima del contenido */
+  }
 
-/* Estilo de las celdas del encabezado */
-.tabla-debug th {
-  padding: 10px;
-  border: 1px solid #ddd;
-  text-align: left;
-  font-weight: bold;
-}
+  /* Estilo de las celdas del encabezado */
+  .tabla-debug th {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: center;
+    font-weight: bold;
+  }
 
 /* Estilo de las celdas del cuerpo de la tabla */
 .tabla-debug td {
   padding: 8px;
   border: 1px solid #ddd;
-  text-align: left;
-  background-color: white; /* Fondo blanco para diferenciar */
+  text-align: center;
 }
 
 .acciones-separadas {

@@ -1,206 +1,212 @@
-<div *ngIf="mostrarFormulario">
-  <div class="botones-container">
-    <button *ngIf="!buscar" (click)="alternarListado()">Listar</button>
-    <div *ngFor="let boton of botonesGeneradosFormulario">
-      <button
-        (click)="
-          boton.onClick ? boton.onClick($event) : ejecutarAccion(boton.nombre)
-        "
-      >
-        {{ boton.nombre }}
-      </button>
-    </div>
-  </div>
-
-  <div *ngFor="let fila of camposMain | keyvalue">
-    <div class="fila">
-      <div
-        *ngFor="let campo of fila.value"
-        class="columna"
-        [ngStyle]="{ display: campo.visible ? 'block' : 'none' }"
-      >
-        <label *ngIf="campo.titulo">{{ decodificarHTML(campo.titulo) }}</label>
-
-        <!-- Si es un botón, renderizamos un ícono -->
-        <i
-          [id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
-          *ngIf="campo.nombre?.toLowerCase().startsWith('boton')"
-          [attr.id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
-          [class]="campo.class"
-          (click)="ejecutarAccion(campo.accion)"
-        ></i>
-
-        <ng-select
-          [id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
-          *ngIf="campo.fuente?.tipo === 'array'"
-          [(ngModel)]="campo.valorDefecto"
-          class="custom-ng-select"
-        >
-          <ng-option
-            *ngFor="let option of campo.fuente.array"
-            [value]="option.clave"
-          >
-            {{ option.valor }}
-          </ng-option>
-        </ng-select>
-
-        <input
-          [id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
-          *ngIf="
-            campo.fuente?.tipo !== 'array' &&
-            !campo.nombre?.toLowerCase().startsWith('boton')
+<div class="json-app-container">
+  <div *ngIf="mostrarFormulario" class="app-json-formulario">
+    <div class="botones-container">
+      <button *ngIf="!buscar" (click)="alternarListado()">Listar</button>
+      <div *ngFor="let boton of botonesGeneradosFormulario">
+        <button
+          (click)="
+            boton.onClick ? boton.onClick($event) : ejecutarAccion(boton.nombre)
           "
-          [type]="campo.tipo"
-          [maxLength]="campo.maxLength"
-          [step]="campo.step"
-          placeholder="Ingrese {{ decodificarHTML(campo.titulo) }}"
-          [(ngModel)]="campo.valorDefecto"
-        />
+        >
+          {{ boton.nombre }}
+        </button>
       </div>
     </div>
-  </div>
 
-  <!-- Secciones -->
-  <div *ngIf="datosSecciones && datosSecciones.length > 0 && buscar !== true">
-    <div *ngFor="let seccion of datosSecciones; let i = index">
-      <fieldset>
-        <legend>{{ seccion.nombre }}</legend>
+    <div *ngFor="let fila of camposMain | keyvalue">
+      <div class="fila">
+        <div
+          *ngFor="let campo of fila.value"
+          class="columna"
+          [ngStyle]="{ display: campo.visible ? 'block' : 'none' }"
+        >
+          <label *ngIf="campo.titulo">{{
+            decodificarHTML(campo.titulo)
+          }}</label>
 
-        <!-- Renderizado de los campos en filas -->
-        <div *ngFor="let fila of seccion.campos">
-          <div class="fila">
-            <div
-              *ngFor="let campo of fila"
-              class="columna"
-              [ngStyle]="{ display: campo.visible ? 'block' : 'none' }"
+          <!-- Si es un botón, renderizamos un ícono -->
+          <i
+            [id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
+            *ngIf="campo.nombre?.toLowerCase().startsWith('boton')"
+            [attr.id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
+            [class]="campo.class"
+            (click)="ejecutarAccion(campo.accion)"
+          ></i>
+
+          <ng-select
+            [id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
+            *ngIf="campo.fuente?.tipo === 'array'"
+            [(ngModel)]="campo.valorDefecto"
+            class="custom-ng-select"
+          >
+            <ng-option
+              *ngFor="let option of campo.fuente.array"
+              [value]="option.clave"
             >
-              <label *ngIf="campo.titulo">{{ campo.titulo }}</label>
+              {{ option.valor }}
+            </ng-option>
+          </ng-select>
 
-              <!-- Si es un botón, renderizamos un ícono -->
-              <i
-                *ngIf="campo.nombre?.toLowerCase().startsWith('boton')"
-                [attr.id]="campo.nombre"
-                [class]="campo.class"
-                (click)="accionSeccionGuardar(campo.accion, OBJ, i)"
-              ></i>
+          <input
+            [id]="buscar ? campo.nombre + '_consulta' : campo.nombre"
+            *ngIf="
+              campo.fuente?.tipo !== 'array' &&
+              !campo.nombre?.toLowerCase().startsWith('boton')
+            "
+            [type]="campo.tipo"
+            [maxLength]="campo.maxLength"
+            [step]="campo.step"
+            placeholder="Ingrese {{ decodificarHTML(campo.titulo) }}"
+            [(ngModel)]="campo.valorDefecto"
+          />
+        </div>
+      </div>
+    </div>
 
-              <!-- Si el campo tiene fuente tipo 'array', usamos ng-select con la clase personalizada -->
-              <ng-select
-                *ngIf="campo.fuente?.tipo === 'array'"
-                [(ngModel)]="campo.valorDefecto"
-                (ngModelChange)="verificarFormularioVacio()"
-                class="custom-ng-select"
+    <!-- Secciones -->
+    <div *ngIf="datosSecciones && datosSecciones.length > 0 && buscar !== true">
+      <div *ngFor="let seccion of datosSecciones; let i = index">
+        <fieldset>
+          <legend>{{ seccion.nombre }}</legend>
+
+          <!-- Renderizado de los campos en filas -->
+          <div *ngFor="let fila of seccion.campos">
+            <div class="fila">
+              <div
+                *ngFor="let campo of fila"
+                class="columna"
+                [ngStyle]="{ display: campo.visible ? 'block' : 'none' }"
               >
-                <ng-option
-                  *ngFor="let option of campo.fuente.array"
-                  [value]="option.clave"
-                >
-                  {{ option.valor }}
-                </ng-option>
-              </ng-select>
+                <label *ngIf="campo.titulo">{{
+                  decodificarHTML(campo.titulo)
+                }}</label>
 
-              <!-- Si no es 'array' y no es un botón, usamos input estándar -->
-              <input
-                *ngIf="
-                  campo.fuente?.tipo !== 'array' &&
-                  !campo.nombre?.toLowerCase().startsWith('boton')
-                "
-                [(ngModel)]="campo.valorDefecto"
-                (ngModelChange)="verificarFormularioVacio()"
-                [type]="campo.tipo"
-                [maxLength]="campo.maxLength"
-                [step]="campo.step"
-                placeholder="Ingrese {{ decodificarHTML(campo.titulo) }}"
-                (change)="ejecutarAccion(campo.accion)"
-              />
+                <!-- Si es un botón, renderizamos un ícono -->
+                <i
+                  *ngIf="campo.nombre?.toLowerCase().startsWith('boton')"
+                  [attr.id]="campo.nombre"
+                  [class]="campo.class"
+                  (click)="accionSeccionGuardar(campo.accion, OBJ, i)"
+                ></i>
+
+                <!-- Si el campo tiene fuente tipo 'array', usamos ng-select con la clase personalizada -->
+                <ng-select
+                  *ngIf="campo.fuente?.tipo === 'array'"
+                  [(ngModel)]="campo.valorDefecto"
+                  (ngModelChange)="verificarFormularioVacio()"
+                  class="custom-ng-select"
+                >
+                  <ng-option
+                    *ngFor="let option of campo.fuente.array"
+                    [value]="option.clave"
+                  >
+                    {{ option.valor }}
+                  </ng-option>
+                </ng-select>
+
+                <!-- Si no es 'array' y no es un botón, usamos input estándar -->
+                <input
+                  *ngIf="
+                    campo.fuente?.tipo !== 'array' &&
+                    !campo.nombre?.toLowerCase().startsWith('boton')
+                  "
+                  [(ngModel)]="campo.valorDefecto"
+                  (ngModelChange)="verificarFormularioVacio()"
+                  [type]="campo.tipo"
+                  [maxLength]="campo.maxLength"
+                  [step]="campo.step"
+                  placeholder="Ingrese {{ decodificarHTML(campo.titulo) }}"
+                  (change)="ejecutarAccion(campo.accion)"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </fieldset>
+        </fieldset>
 
-      <!-- Tabla debajo de cada sección -->
-      <div #tablaSeccion id="tabla-seccion-{{ i }}" class="tabla-container">
-        <div *ngIf="seccion.grid && seccion.grid.length > 0">
-          <table class="tabla-debug filaspares">
-            <thead>
-              <tr>
-                <th
-                  *ngFor="let campo of seccion.grid; let i = index"
-                  [attr.colspan]="campo?.opcionesListado?.longitud || 1"
-                >
-                  {{ decodificarHTML(campo?.titulo) || "Columna " + (i + 1) }}
-                </th>
-                <!-- Columna extra para los botones, con encabezado vacío -->
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                *ngFor="let fila of seccion.gridInfo"
-                (click)="
-                  seleccionarFilaSeccion(fila, i); $event.stopPropagation()
-                "
-              >
-                <td
-                  *ngFor="let grupo of seccion.grid"
-                  [attr.colspan]="grupo?.opcionesListado?.longitud || 1"
-                >
-                  {{ fila[mapeoSecciones?.[grupo.titulo]] || "" }}
-                </td>
-                <!-- Nueva columna solo para los botones -->
-                <td class="celda-con-acciones">
-                  <span
-                    *ngIf="seccion.acciones?.length"
-                    class="acciones-separadas"
+        <!-- Tabla debajo de cada sección -->
+        <div #tablaSeccion id="tabla-seccion-{{ i }}" class="tabla-container">
+          <div *ngIf="seccion.grid && seccion.grid.length > 0">
+            <table class="tabla-debug filaspares">
+              <thead>
+                <tr>
+                  <th
+                    *ngFor="let campo of seccion.grid; let i = index"
+                    [attr.colspan]="campo?.opcionesListado?.longitud || 1"
                   >
-                    <i
-                      *ngFor="let accion of seccion.acciones"
-                      [attr.id]="accion.nombre"
-                      [class]="accion.class"
-                      (click)="accionSeccionEliminar(accion.accion, fila, i)"
-                    ></i>
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                    {{ decodificarHTML(campo?.titulo) || "Columna " + (i + 1) }}
+                  </th>
+                  <!-- Columna extra para los botones, con encabezado vacío -->
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  *ngFor="let fila of seccion.gridInfo"
+                  (click)="
+                    seleccionarFilaSeccion(fila, i); $event.stopPropagation()
+                  "
+                >
+                  <td
+                    *ngFor="let grupo of seccion.grid"
+                    [attr.colspan]="grupo?.opcionesListado?.longitud || 1"
+                  >
+                    {{ fila[mapeoSecciones?.[grupo.titulo]] || "" }}
+                  </td>
+                  <!-- Nueva columna solo para los botones -->
+                  <td class="celda-con-acciones">
+                    <span
+                      *ngIf="seccion.acciones?.length"
+                      class="acciones-separadas"
+                    >
+                      <i
+                        *ngFor="let accion of seccion.acciones"
+                        [attr.id]="accion.nombre"
+                        [class]="accion.class"
+                        (click)="accionSeccionEliminar(accion.accion, fila, i)"
+                      ></i>
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<div *ngIf="mostrarListado">
-  <div class="botones-container">
-    <div *ngFor="let boton of botonesGeneradosListado">
-      <button (click)="boton.onClick($event)">{{ boton.nombre }}</button>
+  <div *ngIf="mostrarListado" class="app-json-listado">
+    <div class="botones-container">
+      <div *ngFor="let boton of botonesGeneradosListado">
+        <button (click)="boton.onClick($event)">{{ boton.nombre }}</button>
+      </div>
     </div>
-  </div>
 
-  <!-- Tabla de campos visibles - parte superior -->
-  <div
-    #tablaContainer
-    class="tabla-main-container"
-    *ngIf="datos.campos && datos.campos.length > 0"
-  >
-    <table class="tabla-debug filaspares">
-      <thead>
-        <tr>
-          <th *ngFor="let grupo of gridMain" [attr.colspan]="grupo.longitud">
-            {{ decodificarHTML(grupo.titulo) }}
-          </th>
-        </tr>
-      </thead>
-      <tbody *ngIf="mapeoColumnas">
-        <tr
-          *ngFor="let fila of datosGridMain"
-          (click)="seleccionarFila(fila); alternarListado()"
-        >
-          <td *ngFor="let grupo of gridMain" [attr.colspan]="grupo.longitud">
-            {{ fila[mapeoColumnas?.[grupo.titulo]] || "" }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- Tabla de campos visibles - parte superior -->
+    <div
+      #tablaContainer
+      class="tabla-main-container"
+      *ngIf="datos.campos && datos.campos.length > 0"
+    >
+      <table class="tabla-debug filaspares">
+        <thead>
+          <tr>
+            <th *ngFor="let grupo of gridMain" [attr.colspan]="grupo.longitud">
+              {{ decodificarHTML(grupo.titulo) }}
+            </th>
+          </tr>
+        </thead>
+        <tbody *ngIf="mapeoColumnas">
+          <tr
+            *ngFor="let fila of datosGridMain"
+            (click)="seleccionarFila(fila); alternarListado()"
+          >
+            <td *ngFor="let grupo of gridMain" [attr.colspan]="grupo.longitud">
+              {{ fila[mapeoColumnas?.[grupo.titulo]] || "" }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

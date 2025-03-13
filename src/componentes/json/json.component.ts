@@ -16,7 +16,7 @@ import { FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { ObtenerDataService } from '../../servicios/obtener-data.service';
 import { ActivatedRoute } from '@angular/router';
-import { fromEvent, of, Subscription, throttleTime } from 'rxjs';
+import { fromEvent, Subscription, throttleTime } from 'rxjs';
 
 @Component({
   selector: 'app-json',
@@ -87,7 +87,7 @@ export class JsonComponent implements OnInit {
       } else {
         console.error('⚠️ No se encontró tablaContainer después del timeout');
       }
-    }, 800);
+    }, 1500);
 
     //Scroll para cada sección
     setTimeout(() => {
@@ -224,6 +224,7 @@ export class JsonComponent implements OnInit {
       // Si se activa el listado, ejecutar la consulta
       if (this.mostrarListado) {
         await this.cargarMasDatos();
+        console.log("datos grid main ",this.datosGridMain);
         this.ngAfterViewInit();
       }
     }
@@ -317,12 +318,12 @@ export class JsonComponent implements OnInit {
     Object.values(this.camposMain).forEach((filaCampos: any) => {
       filaCampos.forEach((campo: any) => {
         let campoTransformado = campo.nombre
-          .replace(/([a-z])([A-Z])/g, '$1_$2') // Inserta guion bajo antes de una mayúscula después de minúscula
-          .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2') // Inserta guion bajo entre dos mayúsculas si la segunda va seguida de una minúscula
+          .replace(/([a-z])([A-Z])/g, '$1_$2')
+          .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
           .toLowerCase();
 
         const key = this.mapeoColumnas[campo.titulo] || campoTransformado;
-        console.log('campo transformado', campoTransformado);
+        // console.log('campoTransformado main', campoTransformado);
         let valor = fila[key];
 
         if (valor && typeof valor === 'string' && valor.includes('T')) {
@@ -440,10 +441,10 @@ export class JsonComponent implements OnInit {
 
         try {
           const dataPermisos: any = await this.obtenerData(consultaPermisos);
-          console.log(
-            'Resultado de la primera consulta (FORMULARIO):',
-            dataPermisos
-          );
+          // console.log(
+          //   'Resultado de la primera consulta (FORMULARIO):',
+          //   dataPermisos
+          // );
 
           if (dataPermisos.length > 0) {
             const idsPermisos = dataPermisos
@@ -452,10 +453,10 @@ export class JsonComponent implements OnInit {
             let consultaBotones = `SELECT * FROM permiso WHERE id IN (${idsPermisos});`;
 
             const dataBotones: any = await this.obtenerData(consultaBotones);
-            console.log(
-              'Resultado de la segunda consulta (FORMULARIO):',
-              dataBotones
-            );
+            // console.log(
+            //   'Resultado de la segunda consulta (FORMULARIO):',
+            //   dataBotones
+            // );
 
             let botonesFiltrados;
             if (this.buscar) {
@@ -576,7 +577,7 @@ export class JsonComponent implements OnInit {
 
           try {
             const dataBotones: any = await this.obtenerData(consultaBotones);
-            console.log('🎯 Botones numéricos obtenidos:', dataBotones);
+            // console.log('🎯 Botones numéricos obtenidos:', dataBotones);
 
             let botonesFiltrados;
 
@@ -674,10 +675,10 @@ export class JsonComponent implements OnInit {
 
         try {
           const dataPermisos: any = await this.obtenerData(consultaPermisos);
-          console.log(
-            'Resultado de la primera consulta (LISTADO):',
-            dataPermisos
-          );
+          // console.log(
+          //   'Resultado de la primera consulta (LISTADO):',
+          //   dataPermisos
+          // );
 
           if (dataPermisos.length > 0) {
             const idsPermisos = dataPermisos
@@ -687,16 +688,17 @@ export class JsonComponent implements OnInit {
             let consultaBotones = `SELECT * FROM permiso WHERE id IN (${idsPermisos});`;
 
             const dataBotones: any = await this.obtenerData(consultaBotones);
-            console.log(
-              'Resultado de la segunda consulta (LISTADO):',
-              dataBotones
-            );
+            // console.log(
+            //   'Resultado de la segunda consulta (LISTADO):',
+            //   dataBotones
+            // );
 
             let botonesConEventos = dataBotones.map((boton: any) => ({
               id: boton.id,
               nombre: boton.id === 2 ? 'Nuevo' : boton.nombre,
               onClick: (event?: Event) => {
                 if (event) event.stopPropagation();
+
                 console.log(`Botón presionado: ${boton.nombre}`);
                 this.ejecutarAccion(boton.nombre);
               },
@@ -767,10 +769,10 @@ export class JsonComponent implements OnInit {
             }
 
             this.botonesGeneradosListado = opcionesMenu;
-            console.log(
-              '✅ Botones generados en LISTADO:',
-              this.botonesGeneradosListado
-            );
+            // console.log(
+            //   '✅ Botones generados en LISTADO:',
+            //   this.botonesGeneradosListado
+            // );
           }
         } catch (error) {
           console.error('Error al obtener los botones (LISTADO):', error);
@@ -852,6 +854,7 @@ export class JsonComponent implements OnInit {
     this.datos = json;
     const camposPorFila: { [key: number]: any[] } = {};
     let grid: any = []; // Grid donde se colocarán los campos
+    console.log("datos.campo", this.datos.campos)
 
     if (this.datos.campos && this.datos.campos.length > 0) {
       this.datos.campos
@@ -949,7 +952,7 @@ export class JsonComponent implements OnInit {
             tipoControl: campo.tipoControl || 'i',
             visible: campo.visible,
           };
-          console.log('botonProcesado', botonProcesado);
+          // console.log('botonProcesado', botonProcesado);
 
           const fila = campo.posicion || 1;
           if (!camposPorFila[fila]) {
@@ -1015,7 +1018,7 @@ export class JsonComponent implements OnInit {
         campos: group.campos,
       }));
 
-      console.log('Grid final:', grid);
+      //console.log('Grid final:', grid);
     }
 
     return [camposPorFila, grid];
@@ -1052,7 +1055,7 @@ export class JsonComponent implements OnInit {
 
     return json;
   }
-
+  // <------------- Función que ejecuta el boton consultar del formulario------------->
   async realizarConsulta() {
     try {
       const cambiosGuardados: { [key: string]: any } = {};
@@ -1180,7 +1183,7 @@ export class JsonComponent implements OnInit {
       this.cdr.detectChanges();
     }
   }
-  // <------------- Función que ejecuta el boton modificar del formulario y el del listado------------->
+  // <------------- Función que ejecuta el boton guardar del formulario------------->
   async modificarFormulario() {
     try {
       const cambiosGuardados: { [key: string]: any } = {};
@@ -1195,7 +1198,6 @@ export class JsonComponent implements OnInit {
 
       const mapeoCampos: { [key: string]: string } = {};
 
-      // 🔹 Crear mapeo solo con los campos visibles
       for (const fila of Object.values(this.camposMain)) {
         for (const campo of fila) {
           if (campo.visible && campo.nombre && campo.campoBD) {
