@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { JsonComponent } from '../json/json.component';
 import {
   ActivatedRoute,
@@ -9,6 +9,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ObtenerDataService } from '../../servicios/obtener-data.service';
+import { LoginService } from '../../servicios/login.service'; // ✅ Importamos el servicio de login
 
 @Component({
   selector: 'app-main',
@@ -16,31 +17,55 @@ import { ObtenerDataService } from '../../servicios/obtener-data.service';
   templateUrl: './main.component.html',
   styleUrl: './main.component.css',
 })
-export class MainComponent {
+export class MainComponent implements OnInit {  // ✅ Implementamos OnInit
   jsonMenu: any;
   subopcionSeleccionada: any = null;
+  menuEstructurado: any[] = [];
+  empresa: string = ''; // ✅ Agregamos la variable empresa
+  logoUrl: string = ''; // ✅ Variable para el logo dinámico
 
-  public menuEstructurado: any[] = [];
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
     private obtenerDataService: ObtenerDataService,
+    private loginService: LoginService, // ✅ Inyectamos el servicio de login
     private route: ActivatedRoute,
     private router: Router
   ) {}
 
   async ngOnInit(): Promise<void> {
-    this.jsonMenu = await this.cargarJson();
+    this.empresa = localStorage.getItem('empresa') || 'Empresa Desconocida'; // ✅ Obtener empresa
+    this.obtenerLogo(); // ✅ Llamamos a la función para obtener el logo
 
+    this.jsonMenu = await this.cargarJson();
     this.generarEstructuraMenu();
   }
+
+  obtenerLogo() {
+    const usuario = localStorage.getItem('idusuariosesion');
+    const token = localStorage.getItem('token');
+
+    if (this.empresa && usuario && token) {
+      this.loginService.getLogo(this.empresa, usuario, token).subscribe({
+        next: (logoResponse) => {
+          this.logoUrl = logoResponse; // ✅ Guardamos el logo
+          localStorage.setItem('logoUrl', logoResponse); // Guardamos en localStorage
+        },
+        error: () => {
+          console.error('Error al obtener el logo.');
+          this.logoUrl = 'https://apm.comandosoftware.com/sahv4/images/sah.png?version=133'; // ✅ Logo por defecto
+        },
+      });
+    }
+  }
+
   irAJson(subopcion: any) {
     console.log('subopcion', subopcion);
     this.subopcionSeleccionada = subopcion;
     const nombreJson = subopcion?.nombreJson;
 
     if (nombreJson) {
-      this.router.navigate([`main/${nombreJson}`]); // 🔄 Fuerza la navegación después de resetear la URL
+      this.router.navigate([`main/${nombreJson}`]);
     } else {
       console.error('❌ Error: No se encontró un nombre de JSON válido.');
     }
@@ -79,32 +104,29 @@ export class MainComponent {
       .filter((item: any) => item.tipo === 'programa')
       .sort((a, b) => a.posicion - b.posicion);
 
-    // ✅ Guardamos en la propiedad pública
     this.menuEstructurado = menus.map((menu: any) => {
       const subopciones = programas
         .filter((programa: any) => programa.id_menu === menu.id)
         .map((programa: any) => {
-          // Extraer el nombre del JSON desde el campo enlace
           const enlacePartes = programa.enlace
             ? programa.enlace.split(',')
             : [];
-          const nombreJson = enlacePartes.length > 1 ? enlacePartes[1] : null; // Posición 1
+          const nombreJson = enlacePartes.length > 1 ? enlacePartes[1] : null;
 
           return {
             ...programa,
-            nombreJson, // 🔹 Guardamos el nombre del JSON extraído
+            nombreJson,
           };
         });
 
       return {
         ...menu,
         subopciones,
-        abierto: false, // 🔹 Control de apertura/cierre del menú
+        abierto: false,
       };
     });
   }
 
-  // ✅ Método público para alternar la visibilidad de submenús
   public toggleSubmenu(menu: any) {
     menu.abierto = !menu.abierto;
   }

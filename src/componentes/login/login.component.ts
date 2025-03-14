@@ -15,6 +15,7 @@ export class LoginComponent implements OnInit {
   contrasena: string = '';
   mostrarClave: boolean = false;
   empresa: string = ''; // Se obtiene desde la URL
+  logoUrl: any;
 
   constructor(
     private loginService: LoginService,
@@ -45,9 +46,10 @@ export class LoginComponent implements OnInit {
       .login(this.usuario, this.contrasena, this.empresa)
       .subscribe({
         next: (response) => {
-          localStorage.setItem('empresa', this.empresa); // Guarda la empresa obtenida de la URL
-          localStorage.setItem('token', response.token); // Guarda el token devuelto por el backend
-          localStorage.setItem('idusuariosesion', this.usuario); // Guarda el nombre de usuario en sesión
+          console.log('response login', response);
+          localStorage.setItem('empresa', this.empresa);
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('idusuariosesion', this.usuario.toUpperCase());
 
           console.log('Datos guardados en localStorage:');
           console.log('Empresa:', localStorage.getItem('empresa'));
@@ -57,7 +59,6 @@ export class LoginComponent implements OnInit {
             localStorage.getItem('idusuariosesion')
           );
 
-          // Redirigir al usuario después del login exitoso
           this.router.navigate([`/main/${this.usuario}`]);
         },
         error: () => {

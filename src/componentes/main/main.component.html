@@ -1,61 +1,64 @@
 <div class="app-container">
-    <!-- Menú lateral -->
-    <div class="menu-sidebar">
-      <!-- Logo arriba del menú -->
-      <div class="logo-container">
-        <img
-          src="https://apm.comandosoftware.com/sahv4/images/sah.png?version=133"
-          id="imgLogo"
-        />
-      </div>
-  
-      <div *ngFor="let menu of menuEstructurado" class="menu-container">
-        <!-- Botón del menú principal -->
-        <button class="menu-button" (click)="toggleSubmenu(menu)">
-          {{ menu.nombre }}
-          <span>
-            <i
-              class="bi"
-              [ngClass]="menu.abierto ? 'bi-chevron-up' : 'bi-chevron-down'"
-            ></i>
-          </span>
+  <!-- Menú lateral -->
+  <div class="menu-sidebar">
+    <!-- Logo arriba del menú -->
+    <div class="logo-container">
+      <img
+        [src]="
+          logoUrl ||
+          'https://apm.comandosoftware.com/sahv4/images/sah.png?version=133'
+        "
+        id="imgLogo"
+      />
+      <p class="empresa-nombre">{{ empresa | uppercase }}</p>
+    </div>
+
+    <div *ngFor="let menu of menuEstructurado" class="menu-container">
+      <!-- Botón del menú principal -->
+      <button class="menu-button" (click)="toggleSubmenu(menu)">
+        {{ menu.nombre }}
+        <span>
+          <i
+            class="bi"
+            [ngClass]="menu.abierto ? 'bi-chevron-up' : 'bi-chevron-down'"
+          ></i>
+        </span>
+      </button>
+
+      <!-- Submenús -->
+      <div *ngIf="menu.abierto" class="submenu-container">
+        <button
+          *ngFor="let sub of menu.subopciones"
+          class="submenu-button"
+          (click)="irAJson(sub)"
+        >
+          <i class="bi bi-dot"></i> {{ sub.nombre }}
         </button>
-  
-        <!-- Submenús -->
-        <div *ngIf="menu.abierto" class="submenu-container">
-          <button
-            *ngFor="let sub of menu.subopciones"
-            class="submenu-button"
-            (click)="irAJson(sub)"
-          >
-            <i class="bi bi-dot"></i> {{ sub.nombre }}
-          </button>
-        </div>
-      </div>
-  
-      <!-- Logo debajo del menú -->
-      <div class="logo-container">
-        <img
-          src="https://apm.comandosoftware.com/sahv4/images/sah.png?version=133"
-          id="imgLogo"
-        />
       </div>
     </div>
-  
-    <!-- Contenedor del componente dinámico -->
-    <div class="content-area">
-      <div class="content-wrapper">
-        <div class="button-container">
-          <button class="menu-button">Rack Esp</button>
-          <button class="menu-button">Rack Hab</button>
-        </div>
-        <!-- 🔥 Aquí se muestra el nombre de la subopción seleccionada -->
-        <h2 class="menu-title" *ngIf="subopcionSeleccionada">
-          {{ subopcionSeleccionada.nombre | uppercase }}
-        </h2>
-  
-        <div class="interfaz-container"><app-json></app-json></div>
-      </div>
+
+    <!-- Logo debajo del menú -->
+    <div class="logo-container">
+      <img
+        [src]="
+          'https://apm.comandosoftware.com/sahv4/images/sah.png?version=133'
+        "
+        id="imgLogo"
+      />
     </div>
   </div>
-  
+
+  <!-- Contenedor del componente dinámico -->
+  <div class="content-wrapper">
+    <div class="button-container">
+      <button class="menu-button">Rack Esp</button>
+      <button class="menu-button">Rack Hab</button>
+    </div>
+    <!-- 🔥 Aquí se muestra el nombre de la subopción seleccionada -->
+    <h2 class="menu-title" *ngIf="subopcionSeleccionada">
+      {{ subopcionSeleccionada.nombre | uppercase }}
+    </h2>
+
+    <div class="interfaz-container"><app-json></app-json></div>
+  </div>
+</div>

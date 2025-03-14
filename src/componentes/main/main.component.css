@@ -16,24 +16,13 @@
     height: 100%; 
   }
   
-  
-  /* 📌 Contenedor del contenido dinámico */
-  .content-area {
-    flex: 1;
-    padding: 20px;
-    background-color: #f8fafc;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; 
-    height: 100%; 
-  }
-  
+   
   /* 📌 Contenedor interno para el router-outlet */
   .content-wrapper {
-    flex-grow: 1;
+    flex: 1;
     overflow-y: auto; 
     height: 100%;
-    padding-right: 10px; 
+    padding: 10px; 
   }
   
   /* 🔹 Contenedor del submenú con scroll si es necesario */
@@ -122,9 +111,24 @@
   }
   .button-container {
     display: flex;
-    gap: 0px; 
+    gap: 10px; 
     justify-content: flex-end; 
   }
   .interfaz-container{
     height: 90%;
   }
+  .logo-container {
+    display: flex;
+    flex-direction: column; /* 📌 Asegura que el contenido se apile verticalmente */
+    align-items: center; /* 📌 Centra el logo y el texto */
+    text-align: center;
+    margin-bottom: 10px; /* 📌 Espaciado opcional */
+  }
+  
+  .empresa-nombre {
+    margin-top: 5px; /* 📌 Espacio entre el logo y el nombre */
+    font-size: 14px;
+    font-weight: bold;
+    text-transform: uppercase; /* 📌 Asegura que esté en mayúsculas */
+  }
+  
