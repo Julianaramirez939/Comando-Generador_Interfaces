@@ -1,0 +1,31 @@
+<div class="login-container">
+  <div class="login-content">
+    <img
+      src="https://apm.comandosoftware.com/sahv4/images/sah.png?version=133"
+      id="imgLogo"
+    />
+
+    <div class="contenedorLogin">
+      <div class="loginInput">
+        <span>Usuario</span>
+        <input id="usuario" type="text" [(ngModel)]="usuario" />
+      </div>
+
+      <div class="loginInput">
+        <span>Contraseña</span>
+        <input
+          id="contrasena"
+          [type]="mostrarClave ? 'text' : 'password'"
+          [(ngModel)]="contrasena"
+        />
+      </div>
+
+      <div class="checkbox-container">
+        <input id="mostrarClave" type="checkbox" [(ngModel)]="mostrarClave" />
+        <label for="mostrarClave">MOSTRAR CLAVE</label>
+      </div>
+
+      <button (click)="ingresar()">INGRESAR</button>
+    </div>
+  </div>
+</div>

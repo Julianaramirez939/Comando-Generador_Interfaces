@@ -1,0 +1,130 @@
+
+/* 🏠 Contenedor principal en dos columnas */
+.app-container {
+    display: flex; 
+    height: 100vh; 
+    overflow: hidden; 
+  }
+  
+  /* 📌 Menú lateral */
+  .menu-sidebar {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; 
+    overflow-y: auto; 
+    height: 100%; 
+  }
+  
+  
+  /* 📌 Contenedor del contenido dinámico */
+  .content-area {
+    flex: 1;
+    padding: 20px;
+    background-color: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; 
+    height: 100%; 
+  }
+  
+  /* 📌 Contenedor interno para el router-outlet */
+  .content-wrapper {
+    flex-grow: 1;
+    overflow-y: auto; 
+    height: 100%;
+    padding-right: 10px; 
+  }
+  
+  /* 🔹 Contenedor del submenú con scroll si es necesario */
+  .submenu-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 5px;
+    padding-left: 15px;
+    padding-right: 5px; 
+    
+  }
+  
+  
+  
+  /* 🔹 Botón del menú principal */
+  .menu-button {
+    background-color: #003366; 
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: auto;
+    min-width: 220px;
+    border-radius: 15px;
+    transition: background 0.3s ease;
+    gap: 10px;
+    margin-bottom: 10px; 
+  }
+  
+  .menu-button:hover {
+    background-color: #003366;
+  }
+  
+  /* 🔹 Botón de las subopciones */
+  .submenu-button {
+    background-color: #0068a1;
+    color: white;
+    padding: 8px 12px;
+    font-size: 14px;
+    border-radius: 15px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 220px; 
+    height: 50px; 
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    white-space: normal; 
+    word-wrap: break-word; 
+    text-align: center;
+    overflow-wrap: break-word; 
+  }
+  
+  .submenu-button:hover {
+    background-color: #0056b3;
+  }
+  .menu-title {
+    color: #5e5e5e;
+    font-family: "robotobold";
+    font-size: 1.4em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+  .logo-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px 0;
+    margin-top: auto; 
+    width: 100%; 
+    text-align: center; 
+  }
+  
+  #imgLogo {
+    width: 95.21px;
+    height: 27.13px;
+    display: block; 
+  }
+  .button-container {
+    display: flex;
+    gap: 0px; 
+    justify-content: flex-end; 
+  }
+  .interfaz-container{
+    height: 90%;
+  }

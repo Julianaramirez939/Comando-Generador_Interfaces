@@ -48,6 +48,7 @@ export class JsonComponent implements OnInit {
   idFilaSeleccionada: number | null = null;
   idFilaSeleccionadaSeccion: any = null;
   OBJ: any = {};
+  private routeSubscription!: Subscription; 
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
@@ -65,6 +66,8 @@ export class JsonComponent implements OnInit {
 
   scrollSubscription!: Subscription;
   seccionesSubscriptions: Subscription[] = [];
+
+  
 
   ngAfterViewInit() {
     // 🔹 Scroll para el contenedor principal
@@ -169,15 +172,30 @@ export class JsonComponent implements OnInit {
   }
 
   ngOnDestroy() {
+   
+
+    // 🔻 Cancelar la suscripción al scroll si existe
     if (this.scrollSubscription) {
       this.scrollSubscription.unsubscribe();
     }
+
+    // 🔻 Cancelar todas las suscripciones de secciones
     this.seccionesSubscriptions.forEach((sub) => sub.unsubscribe());
-  }
+}
+
 
   async ngOnInit(): Promise<void> {
-    const nombreJson = this.route.snapshot.paramMap.get('nombreJson') || '';
+   // Suscribirse a los cambios en los parámetros de la URL
+   this.route.paramMap.subscribe(params => {
+    const nombreJson = params.get('nombreJson') || '';
+    console.log("CAMBIO LA URL")
+    this.cargarComponente(nombreJson);
+  });
+  }
+  async cargarComponente(nombreJson: string) {
+    console.log("nombreJSON en json components", nombreJson)
     this.jsonMain = await this.cargarJson(nombreJson);
+
 
     this.alternaListadoFormulario = this.jsonMain.alternaListadoFormulario;
     const [camposPorFila, grid] = this.generarEstructura(this.jsonMain);
